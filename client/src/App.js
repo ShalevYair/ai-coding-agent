@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
-import { Settings, Play, CheckCircle, Loader2, AlertCircle } from 'lucide-react';
+import { Settings, Loader2 } from 'lucide-react';
 
 const App = () => {
   const [provider, setProvider] = useState(localStorage.getItem('ai-provider') || 'gemini');
@@ -10,7 +10,6 @@ const App = () => {
   const [prompt, setPrompt] = useState('');
   const [plan, setPlan] = useState(null);
   const [loading, setLoading] = useState(false);
-  const [logs, setLogs] = useState([]);
 
   useEffect(() => {
     localStorage.setItem('ai-provider', provider);
@@ -42,10 +41,9 @@ const App = () => {
         }
       });
       setPlan(res.data.plan);
-      setLogs(prev => [...prev, "התוכנית נוצרה בהצלחה!"]);
     } catch (err) {
       const msg = err.response?.data?.error || err.message;
-      alert(`שגיאה מהשרת: ${msg}\n\nטיפ: וודא שה-Token והמפתח תקינים.`);
+      alert(`שגיאה מהשרת: ${msg}`);
     }
     setLoading(false);
   };
@@ -90,7 +88,7 @@ const App = () => {
         <section style={{ border: '1px solid #ccc', padding: '15px', borderRadius: '8px' }}>
           <h3>שלבי הביצוע:</h3>
           {plan.map((step) => (
-            <div key={step.id} style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '10px', alignItems: 'center', borderBottom: '1px solid #eee', paddingBottom: '5px' }}>
+            <div key={step.id} style={{ marginBottom: '10px', borderBottom: '1px solid #eee', paddingBottom: '5px' }}>
               <span><strong>{step.id}:</strong> {step.description}</span>
             </div>
           ))}
