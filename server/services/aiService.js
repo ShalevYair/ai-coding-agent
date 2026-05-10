@@ -1,55 +1,34 @@
-const { GoogleGenerativeAI } = require('@google/generative-ai');
-const Anthropic = require('@anthropic-ai/sdk');
+const { GoogleGenerativeAI } = require("@google/generative-ai");
 
 class AIService {
   constructor(provider, apiKey) {
     this.provider = provider;
     this.apiKey = apiKey;
-    
-    if (provider === 'gemini') {
-      const genAI = new GoogleGenerativeAI(apiKey);
-      this.model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
-    } else if (provider === 'claude') {
-      this.client = new Anthropic({ apiKey });
-    }
+    console.log(`🤖 AIService initialized with provider: ${provider}`);
   }
 
-  // שלב התכנון: יצירת רשימת צעדים לביצוע
   async generatePlan(prompt, aiMap) {
-    const systemPrompt = `You are a technical architect. Based on the following file map:
-    ${JSON.stringify(aiMap)}
-    
-    Create a step-by-step technical plan to fulfill this request: "${prompt}"
-    Return the plan as a JSON array of steps. Each step should have: "id", "description", and "affectedFiles" (array).`;
+    console.log("🤖 AI: Starting generatePlan...");
+    try {
+      const genAI = new GoogleGenerativeAI(this.apiKey);
+      const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
 
-    return await this._askAI(systemPrompt);
-  }
+      const fullPrompt = `You are a coding assistant. Project structure: ${JSON.stringify(aiMap)}. Task: ${prompt}. 
+      Return ONLY a JSON array of steps: [{"id": 1, "description": "...", "affectedFiles": ["..."]}]`;
 
-  // שלב הביצוע: עריכת קוד של קובץ ספציפי
-  async editCode(currentCode, instructions, contextFiles = []) {
-    const systemPrompt = `You are an expert coder. Edit the following file:
-    ---
-    ${currentCode}
-    ---
-    Instructions: ${instructions}
-    Related context: ${JSON.stringify(contextFiles)}
-    
-    Return ONLY the full new code of the file. No explanations.`;
+      console.log("🤖 AI: Sending request to Gemini...");
+      const result = await model.generateContent(fullPrompt);
+      const response = await result.response;
+      const text = response.text();
+      
+      console.log("🤖 AI: Raw response received:", text);
 
-    return await this._askAI(systemPrompt);
-  }
-
-  async _askAI(prompt) {
-    if (this.provider === 'gemini') {
-      const result = await this.model.generateContent(prompt);
-      return result.response.text();
-    } else {
-      const msg = await this.client.messages.create({
-        model: "claude-3-sonnet-20240229",
-        max_tokens: 4000,
-        messages: [{ role: "user", content: prompt }],
-      });
-      return msg.content[0].text;
+      // ניקוי סימני Markdown אם ה-AI הוסיף אותם
+      const cleanJson = text.replace(/```json|```/g, "").trim();
+      return cleanJson;
+    } catch (error) {
+      console.error("❌ AI Service Error:", error.message);
+      throw new Error("AI Failed: " + error.message);
     }
   }
 }
