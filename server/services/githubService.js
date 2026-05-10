@@ -1,42 +1,26 @@
-const { Octokit } = require('octokit');
+const { Octokit } = require("@octokit/rest");
 
 class GitHubService {
   constructor(token) {
     this.octokit = new Octokit({ auth: token });
+    console.log("📂 GitHubService initialized");
   }
 
-  // שליפת תוכן של קובץ
-  async getFile(owner, repo, path) {
+  async getAiMap(owner, repo) {
+    console.log(`📂 GitHub: Fetching map for ${owner}/${repo}...`);
     try {
-      const { data } = await this.octokit.rest.repos.getContent({
+      // נסיון לקרוא קובץ בשם ai-map.json
+      const { data } = await this.octokit.repos.getContent({
         owner,
         repo,
-        path,
+        path: 'ai-map.json'
       });
-      // GitHub מחזיר תוכן ב-Base64, אנחנו נפענח אותו לטקסט
-      return Buffer.from(data.content, 'base64').toString('utf8');
-    } catch (error) {
-      if (error.status === 404) return null; // קובץ לא קיים
-      throw error;
+      console.log("✅ GitHub: Found ai-map.json");
+      return JSON.parse(Buffer.from(data.content, 'base64').toString());
+    } catch (e) {
+      console.log("⚠️ GitHub: ai-map.json not found, using empty map.");
+      return { files: [] };
     }
-  }
-
-  // ביצוע Commit (יצירה או עדכון של קובץ)
-  async commitFile(owner, repo, path, content, message, sha = null) {
-    return await this.octokit.rest.repos.createOrUpdateFileContents({
-      owner,
-      repo,
-      path,
-      message,
-      content: Buffer.from(content).toString('base64'),
-      sha, // נדרש אם אנחנו מעדכנים קובץ קיים
-    });
-  }
-
-  // בדיקה אם קובץ ה-ai-map.json קיים ושליפתו
-  async getAiMap(owner, repo) {
-    const content = await this.getFile(owner, repo, 'ai-map.json');
-    return content ? JSON.parse(content) : null;
   }
 }
 
