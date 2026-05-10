@@ -6,8 +6,11 @@ const App = () => {
   const [provider, setProvider] = useState(localStorage.getItem('ai-provider') || 'gemini');
   const [aiKey, setAiKey] = useState(localStorage.getItem('ai-key') || '');
   const [githubToken, setGithubToken] = useState(localStorage.getItem('github-token') || '');
-  const [repo, setRepo] = useState({ owner: '', name: '' });
-  const [prompt, setPrompt] = useState('');
+  
+  // פרטי הבדיקה שלך כבר כאן!
+  const [repo, setRepo] = useState({ owner: 'shalevyair', name: 'ai-coding-agent' });
+  const [prompt, setPrompt] = useState('בנה דף נחיתה פשוט עם כותרת וכפתור');
+  
   const [plan, setPlan] = useState(null);
   const [loading, setLoading] = useState(false);
 
@@ -17,16 +20,11 @@ const App = () => {
     localStorage.setItem('github-token', githubToken);
   }, [provider, aiKey, githubToken]);
 
-  const validateFields = () => {
-    if (!aiKey) { alert("חסר מפתח AI! נא להזין API Key בשדות ההגדרות."); return false; }
-    if (!githubToken) { alert("חסר GitHub Token! בלעדיו לא נוכל לגשת לקבצים שלך."); return false; }
-    if (!repo.owner || !repo.name) { alert("נא למלא את שם ה-Owner (שם המשתמש שלך) ואת שם ה-Repo בגיטהאב."); return false; }
-    return true;
-  };
-
   const generatePlan = async () => {
-    if (!validateFields()) return;
-
+    if (!aiKey || !githubToken) {
+      alert("חובה להזין API Key ו-GitHub Token בהגדרות!");
+      return;
+    }
     setLoading(true);
     try {
       const res = await axios.post('/api/plan', {
@@ -42,54 +40,49 @@ const App = () => {
       });
       setPlan(res.data.plan);
     } catch (err) {
-      const msg = err.response?.data?.error || err.message;
-      alert(`שגיאה מהשרת: ${msg}`);
+      alert(`שגיאה: ${err.response?.data?.error || err.message}`);
     }
     setLoading(false);
   };
 
   return (
     <div style={{ padding: '20px', fontFamily: 'sans-serif', maxWidth: '800px', margin: '0 auto', direction: 'rtl' }}>
-      <h1>🤖 סוכן הקוד שלי</h1>
+      <h1>🤖 סוכן הקוד: מצב בדיקה</h1>
 
       <section style={{ background: '#fef2f2', padding: '15px', borderRadius: '8px', marginBottom: '20px', border: '1px solid #fee2e2' }}>
-        <h3><Settings size={18} /> הגדרות (חובה)</h3>
+        <h3><Settings size={18} /> הגדרות</h3>
         <div style={{ display: 'grid', gap: '10px' }}>
-          <select value={provider} onChange={(e) => setProvider(e.target.value)}>
-            <option value="gemini">Google Gemini</option>
-            <option value="claude">Anthropic Claude</option>
-          </select>
-          <input type="password" placeholder="מפתח AI API Key" value={aiKey} onChange={(e) => setAiKey(e.target.value)} />
-          <input type="password" placeholder="GitHub Personal Access Token" value={githubToken} onChange={(e) => setGithubToken(e.target.value)} />
+          <input type="password" placeholder="מפתח Gemini API Key" value={aiKey} onChange={(e) => setAiKey(e.target.value)} />
+          <input type="password" placeholder="GitHub Token (ghp_...)" value={githubToken} onChange={(e) => setGithubToken(e.target.value)} />
         </div>
       </section>
 
       <section style={{ marginBottom: '20px' }}>
         <div style={{ display: 'flex', gap: '10px', marginBottom: '10px' }}>
-          <input placeholder="שם משתמש (Owner)" value={repo.owner} onChange={(e) => setRepo({...repo, owner: e.target.value})} />
-          <input placeholder="שם הפרויקט (Repo)" value={repo.name} onChange={(e) => setRepo({...repo, name: e.target.value})} />
+          <input placeholder="Owner" value={repo.owner} onChange={(e) => setRepo({...repo, owner: e.target.value})} />
+          <input placeholder="Repo" value={repo.name} onChange={(e) => setRepo({...repo, name: e.target.value})} />
         </div>
         <textarea 
-          placeholder="מה תרצה לבנות?" 
+          placeholder="מה תרצה שהסוכן יבנה?" 
           value={prompt} 
           onChange={(e) => setPrompt(e.target.value)}
-          style={{ width: '100%', height: '80px', marginBottom: '10px', padding: '10px' }}
+          style={{ width: '100%', height: '60px', marginBottom: '10px', padding: '10px' }}
         />
         <button 
           onClick={generatePlan} 
           disabled={loading}
-          style={{ padding: '10px 20px', cursor: 'pointer', background: '#2563eb', color: 'white', border: 'none', borderRadius: '5px' }}
+          style={{ width: '100%', padding: '12px', cursor: 'pointer', background: '#2563eb', color: 'white', border: 'none', borderRadius: '5px', fontWeight: 'bold' }}
         >
-          {loading ? <Loader2 className="animate-spin" /> : "צור תוכנית עבודה"}
+          {loading ? <Loader2 className="animate-spin" /> : "🚀 צור תוכנית עבודה (Gemini 2.5)"}
         </button>
       </section>
 
       {plan && (
-        <section style={{ border: '1px solid #ccc', padding: '15px', borderRadius: '8px' }}>
-          <h3>שלבי הביצוע:</h3>
+        <section style={{ border: '1px solid #ccc', padding: '15px', borderRadius: '8px', background: '#f9fafb' }}>
+          <h3>📋 שלבי הביצוע שה-AI הציע:</h3>
           {plan.map((step) => (
-            <div key={step.id} style={{ marginBottom: '10px', borderBottom: '1px solid #eee', paddingBottom: '5px' }}>
-              <span><strong>{step.id}:</strong> {step.description}</span>
+            <div key={step.id} style={{ padding: '8px', borderBottom: '1px solid #eee' }}>
+              <strong>{step.id}.</strong> {step.description}
             </div>
           ))}
         </section>
