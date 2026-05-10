@@ -31,7 +31,8 @@ const App = () => {
   const generatePlan = async () => {
     setLoading(true);
     try {
-      const res = await axios.post('http://localhost:5000/api/plan', {
+      // כאן התיקון: הסרנו את localhost
+      const res = await axios.post('/api/plan', {
         prompt,
         owner: repo.owner,
         repo: repo.name
@@ -48,10 +49,11 @@ const App = () => {
     setLoading(true);
     setLogs(prev => [...prev, `Executing: ${step.description}...`]);
     try {
-      await axios.post('http://localhost:5000/api/execute', {
+      // כאן התיקון: הסרנו את localhost
+      await axios.post('/api/execute', {
         owner: repo.owner,
         repo: repo.name,
-        filePath: step.affectedFiles[0], // לצורך הפשטה, לוקחים את הקובץ הראשון
+        filePath: step.affectedFiles[0],
         instructions: step.description
       }, { headers });
       setLogs(prev => [...prev, `Step completed: ${step.id}`]);
