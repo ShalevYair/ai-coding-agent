@@ -2,44 +2,31 @@ const { GoogleGenerativeAI } = require("@google/generative-ai");
 
 class AIService {
   constructor(provider, apiKey) {
-    this.provider = provider;
     this.apiKey = apiKey;
-    console.log(`🤖 AIService initialized`);
+    console.log(`🤖 AIService initialized for Gemini 2.5`);
   }
 
   async generatePlan(prompt, aiMap) {
-    console.log("🤖 AI: Starting generatePlan...");
     try {
       const genAI = new GoogleGenerativeAI(this.apiKey);
-      
-      // משתמשים במודל 1.5 Flash - השם המעודכן ביותר
-      const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
+      // עדכון למודל 2.5 פלאש המעודכן ל-2026
+      const model = genAI.getGenerativeModel({ model: "gemini-2.5-flash" });
 
-      const fullPrompt = `You are an expert coding assistant. 
+      const fullPrompt = `You are a professional web developer. 
       Project structure: ${JSON.stringify(aiMap)}
-      Task: ${prompt}
+      User request: ${prompt}
       
-      Return ONLY a valid JSON array of steps. No markdown, no triple backticks.
-      Format: [{"id": 1, "description": "step text", "affectedFiles": ["path/to/file"]}]`;
+      Return ONLY a JSON array. No text before or after.
+      Format: [{"id": 1, "description": "task description", "affectedFiles": ["path/to/file"]}]`;
 
-      console.log("🤖 AI: Sending request to Gemini...");
       const result = await model.generateContent(fullPrompt);
       const response = await result.response;
-      let text = response.text();
+      let text = response.text().replace(/```json|```/g, "").trim();
       
-      console.log("🤖 AI: Raw response received");
-
-      // ניקוי חזק של התשובה כדי למנוע שגיאות JSON
-      const cleanJson = text.replace(/```json/g, "").replace(/```/g, "").trim();
-      
-      return cleanJson;
+      return text;
     } catch (error) {
-      console.error("❌ AI Service Error:", error.message);
-      // אם המודל הספציפי לא נמצא, ננסה להחזיר הודעה ברורה
-      if (error.message.includes("404")) {
-        throw new Error("המודל gemini-1.5-flash לא נמצא. וודא שה-API Key שלך תקין ותומך במודל זה.");
-      }
-      throw error;
+      console.error("❌ AI Error:", error.message);
+      throw new Error(`AI Error: ${error.message}`);
     }
   }
 }
