@@ -1,0 +1,18 @@
+{
+  "name": "ai-coding-agent-server",
+  "version": "1.0.0",
+  "description": "Backend for AI Coding Agent using Gemini and Claude",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "dev": "node --watch server.js"
+  },
+  "dependencies": {
+    "@anthropic-ai/sdk": "^0.20.0",
+    "@google/generative-ai": "^0.11.0",
+    "cors": "^2.8.5",
+    "express": "^4.18.2",
+    "octokit": "^3.1.2",
+    "axios": "^1.6.0"
+  }
+}
