@@ -8,7 +8,6 @@ const app = express();
 app.use(cors());
 app.use(express.json());
 
-// פונקציית עזר להזרקת השירותים
 const getServices = (req) => {
   const aiKey = req.headers['x-ai-key'];
   const githubToken = req.headers['x-github-token'];
@@ -18,7 +17,6 @@ const getServices = (req) => {
   };
 };
 
-// 1. הבאת פרטי משתמש ורשימת פרויקטים (אוטומטי)
 app.get('/api/github/user-data', async (req, res) => {
   try {
     const token = req.headers['x-github-token'];
@@ -35,33 +33,40 @@ app.get('/api/github/user-data', async (req, res) => {
   }
 });
 
-// 2. נתיב הצ'אט המרכזי (כולל סינון קבצים והגבלת היסטוריה)
 app.post('/api/chat', async (req, res) => {
   try {
     const { ai, github } = getServices(req);
     const { prompt, history, context } = req.body;
 
     if (!context.owner || !context.repo) {
-      return res.json({ response: "חובה לבחור פרויקט (Repository) בהגדרות כדי שאוכל לראות את הקבצים." });
+      return res.json({ response: "חובה לבחור פרויקט (Repository) כדי שאוכל לסרוק את הקבצים." });
     }
 
-    // הגבלת היסטוריה ל-10 הודעות אחרונות לשמירה על פוקוס וחסכון בטוקנים
-    const limitedHistory = Array.isArray(history) ? history.slice(-10) : [];
-
-    // הבאת קבצים וסינון קבצי מערכת של גיט
+    // 1. שליפת מבנה הקבצים המלא מה-GitHub Service
+    // ודא שב-githubService הפונקציה getAiMap משתמשת ב-recursive: true
     const allFiles = await github.getAiMap(context.owner, context.repo);
-    const filteredFiles = Array.isArray(allFiles) 
-      ? allFiles.filter(f => !f.includes('.git/') && !['HEAD', 'config', 'description', 'index'].includes(f))
-      : [];
     
+    const filteredFiles = Array.isArray(allFiles) 
+      ? allFiles.filter(f => 
+          !f.includes('.git/') && 
+          !f.includes('node_modules/') && 
+          !['HEAD', 'config', 'description', 'index'].includes(f)
+        )
+      : [];
+
+    // 2. עדכון ה-Context עם רשימת הקבצים בזמן אמת
     const updatedContext = {
       ...context,
+      realTimeFileList: filteredFiles, // הזרקה ישירה לרמה הראשונה של ה-context
       projectMap: {
         ...(context.projectMap || {}),
         realTimeFileList: filteredFiles
       }
     };
 
+    const limitedHistory = Array.isArray(history) ? history.slice(-10) : [];
+
+    // 3. שליחה ל-AI - ה-aiService צריך לדעת לשרשר את ה-updatedContext לפרומפט
     const response = await ai.chat(prompt, limitedHistory, updatedContext);
     res.json({ response });
   } catch (e) {
@@ -70,7 +75,6 @@ app.post('/api/chat', async (req, res) => {
   }
 });
 
-// 3. ביצוע שינויים (תומך ביצירת קבצים חדשים)
 app.post('/api/execute', async (req, res) => {
   try {
     const { github, ai } = getServices(req);
@@ -80,10 +84,9 @@ app.post('/api/execute', async (req, res) => {
       for (const file of action.affectedFiles) {
         let currentContent = ""; 
         try {
-          // מנסה לקרוא תוכן. אם הקובץ חדש, הפונקציה תזרוק שגיאה - אנחנו נתפוס אותה ונתחיל עם תוכן ריק.
           currentContent = await github.getFile(context.owner, context.repo, file);
         } catch (e) {
-          console.log(`מזהה קובץ חדש ליצירה: ${file}`);
+          console.log(`קובץ חדש: ${file}`);
         }
 
         const newContent = await ai.editCode(currentContent, action.description);
@@ -98,7 +101,3 @@ app.post('/api/execute', async (req, res) => {
 });
 
 module.exports = app;
-
-if (require.main === module) {
-  app.listen(3001, () => console.log('Server running on port 3001'));
-}
