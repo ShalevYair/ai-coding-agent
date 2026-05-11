@@ -1,9 +1,8 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import axios from 'axios';
-import { Loader2, CheckCircle2, Settings, RefreshCw, FileText, BrainCircuit, Rocket, X, User } from 'lucide-react';
+import { Loader2, CheckCircle2, Settings, Send, BrainCircuit, Rocket, X, User, Bot } from 'lucide-react';
 
 const App = () => {
-  // --- State Management ---
   const [aiKey, setAiKey] = useState(localStorage.getItem('ai-key') || '');
   const [githubToken, setGithubToken] = useState(localStorage.getItem('github-token') || '');
   const [owner, setOwner] = useState('');
@@ -11,194 +10,156 @@ const App = () => {
   const [selectedRepo, setSelectedRepo] = useState(localStorage.getItem('selected-repo') || '');
   const [readme, setReadme] = useState('');
   const [projectMap, setProjectMap] = useState(null);
-  const [prompt, setPrompt] = useState('הוסף עיצוב CSS מודרני לדף הבית');
-  const [plan, setPlan] = useState(null);
+  
+  const [messages, setMessages] = useState([]);
+  const [inputText, setInputText] = useState('');
   const [loading, setLoading] = useState(false);
+  const [pendingPlan, setPendingPlan] = useState(null);
   const [executing, setExecuting] = useState(false);
-  const [currentStep, setCurrentStep] = useState(-1);
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
-
+  
+  const chatEndRef = useRef(null);
   const headers = { 'x-github-token': githubToken, 'x-ai-key': aiKey };
 
-  // --- Effects ---
+  // גלילה אוטומטית לסוף הצ'אט
+  useEffect(() => { chatEndRef.current?.scrollIntoView({ behavior: "smooth" }); }, [messages]);
+
   useEffect(() => {
-    if (!aiKey || !githubToken) {
-      setIsSettingsOpen(true);
-    }
+    if (!aiKey || !githubToken) setIsSettingsOpen(true);
     if (githubToken) fetchRepos();
+    // הודעת שלום
+    setMessages([{ role: 'bot', text: 'שלום! מה תרצה שנעשה היום בפרויקט?' }]);
   }, []);
 
-  useEffect(() => {
-    localStorage.setItem('ai-key', aiKey);
-    localStorage.setItem('github-token', githubToken);
-    localStorage.setItem('selected-repo', selectedRepo);
-  }, [aiKey, githubToken, selectedRepo]);
-
-  useEffect(() => {
-    if (selectedRepo && owner) fetchContext();
-  }, [selectedRepo, owner]);
-
-  // --- API Calls ---
   const fetchRepos = async () => {
-    if (!githubToken) return;
     try {
       const res = await axios.get('/api/user/repos', { headers });
-      setOwner(res.data.owner);
-      setRepos(res.data.repos);
+      setOwner(res.data.owner); setRepos(res.data.repos);
       if (res.data.repos.length > 0 && !selectedRepo) setSelectedRepo(res.data.repos[0]);
-    } catch (e) { console.error("GitHub Auth Error"); }
+    } catch (e) {}
   };
 
   const fetchContext = async () => {
     try {
       const res = await axios.get(`/api/repo/context?owner=${owner}&repo=${selectedRepo}`, { headers });
-      setReadme(res.data.readme || 'No README.md found.');
-      setProjectMap(res.data.projectMap);
-    } catch (e) { setReadme('Failed to load context.'); }
+      setReadme(res.data.readme); setProjectMap(res.data.projectMap);
+    } catch (e) {}
   };
 
-  const generatePlan = async () => {
-    if (!selectedRepo) {
-      setIsSettingsOpen(true);
-      return;
-    }
+  useEffect(() => { if (selectedRepo && owner) fetchContext(); }, [selectedRepo, owner]);
+
+  const sendMessage = async () => {
+    if (!inputText.trim()) return;
+    const userMsg = inputText;
+    setInputText('');
+    setMessages(prev => [...prev, { role: 'user', text: userMsg }]);
     setLoading(true);
-    setPlan(null);
+
     try {
-      const res = await axios.post('/api/plan', { 
-        prompt, owner, repo: selectedRepo, context: { readme, projectMap } 
+      const res = await axios.post('/api/chat', {
+        prompt: userMsg,
+        history: messages,
+        context: { repo: selectedRepo, readme, projectMap }
       }, { headers });
-      setPlan(res.data.plan);
-    } catch (e) { alert("Error: " + (e.response?.data?.error || e.message)); }
+
+      const aiRes = res.data.response;
+      
+      // בדיקה אם יש תוכנית עבודה מוחבאת בתוך התגובה
+      const planMatch = aiRes.match(/\[\[\[(.*?)\]\]\]/s);
+      if (planMatch) {
+        setPendingPlan(JSON.parse(planMatch[1]));
+        const cleanText = aiRes.replace(/\[\[\[.*?\]\]\]/s, '').trim();
+        setMessages(prev => [...prev, { role: 'bot', text: cleanText, hasPlan: true }]);
+      } else {
+        setMessages(prev => [...prev, { role: 'bot', text: aiRes }]);
+      }
+    } catch (e) {
+      setMessages(prev => [...prev, { role: 'bot', text: 'מצטער, קרתה שגיאה בחיבור.' }]);
+    }
     setLoading(false);
   };
 
-  const executeFullPlan = async () => {
+  const executePlan = async () => {
     setExecuting(true);
+    setMessages(prev => [...prev, { role: 'bot', text: 'מתחיל בביצוע העדכונים בגיטהאב... 🔨' }]);
     try {
-      for (let i = 0; i < plan.length; i++) {
-        setCurrentStep(i);
+      for (const step of pendingPlan) {
         await axios.post('/api/execute', {
-          owner, repo: selectedRepo,
-          filePath: plan[i].affectedFiles[0],
-          instructions: plan[i].description
+          owner, repo: selectedRepo, filePath: step.affectedFiles[0], instructions: step.description
         }, { headers });
       }
-      setCurrentStep(-2); 
-      await axios.post('/api/repo/finalize', { owner, repo: selectedRepo, prompt }, { headers });
-      alert("✅ Done! Project updated.");
+      await axios.post('/api/repo/finalize', { owner, repo: selectedRepo, prompt: "Chat update" }, { headers });
+      setMessages(prev => [...prev, { role: 'bot', text: '✅ הכל מוכן! הקוד, ה-README והמפה עודכנו.' }]);
+      setPendingPlan(null);
       fetchContext();
-    } catch (e) { alert("❌ Failed at step " + (currentStep + 1)); }
+    } catch (e) {
+      setMessages(prev => [...prev, { role: 'bot', text: '❌ הביצוע נכשל באמצע. בדוק את גיטהאב.' }]);
+    }
     setExecuting(false);
-    setCurrentStep(-1);
   };
 
   return (
-    <div style={{ padding: '20px', fontFamily: 'system-ui', maxWidth: '700px', margin: '0 auto', direction: 'rtl', color: '#1e293b' }}>
-      
-      {/* Header & Settings Trigger */}
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '40px' }}>
-        <h1 style={{ margin: 0, display: 'flex', alignItems: 'center', gap: '10px' }}>
-          <BrainCircuit color="#2563eb" size={32} /> AI Agent
-        </h1>
-        <button onClick={() => setIsSettingsOpen(true)} style={settingsButtonStyle}>
-          <Settings size={24} />
-          {selectedRepo && <span style={repoBadgeStyle}>{selectedRepo}</span>}
-        </button>
-      </div>
-
-      {/* Main UI - Prompt Only */}
-      <div style={{ marginBottom: '20px' }}>
-        <textarea 
-          value={prompt} 
-          onChange={e => setPrompt(e.target.value)} 
-          placeholder="מה תרצה לבנות היום?"
-          style={promptAreaStyle}
-        />
-        <button 
-          onClick={generatePlan} 
-          disabled={loading || executing} 
-          style={{ ...buttonStyle, background: '#2563eb' }}
-        >
-          {loading ? <Loader2 className="animate-spin" /> : "צור תוכנית עבודה חכמה 🧠"}
-        </button>
-      </div>
-
-      {/* Plan Steps */}
-      {plan && (
-        <div style={{ marginTop: '20px' }}>
-          <h3 style={{ borderBottom: '2px solid #e2e8f0', paddingBottom: '10px' }}>📋 שלבי עבודה:</h3>
-          {plan.map((step, index) => (
-            <div key={index} style={{ 
-              display: 'flex', justifyContent: 'space-between', padding: '15px', 
-              background: index === currentStep ? '#eff6ff' : 'white', 
-              border: '1px solid #e2e8f0', borderRadius: '10px', marginBottom: '8px' 
-            }}>
-              <div>
-                <strong>{step.id}. {step.description}</strong>
-                <div style={{ fontSize: '12px', color: '#64748b' }}>File: {step.affectedFiles?.[0]}</div>
-              </div>
-              {index < currentStep ? <CheckCircle2 color="#10b981" /> : index === currentStep ? <Loader2 className="animate-spin" color="#2563eb" /> : null}
-            </div>
-          ))}
-
-          {currentStep === -2 && (
-            <div style={finalizingStyle}>
-              <RefreshCw size={18} className="animate-spin" /> Updating context & README...
-            </div>
-          )}
-
-          <button onClick={executeFullPlan} disabled={executing} style={{ ...buttonStyle, background: '#10b981', marginTop: '15px' }}>
-            {executing ? "הסוכן בפעולה..." : <><Rocket size={18} /> בצע את כל השלבים</>}
-          </button>
+    <div style={containerStyle}>
+      {/* Header */}
+      <div style={headerStyle}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+          <BrainCircuit color="#2563eb" size={28} />
+          <h2 style={{ margin: 0 }}>AI Coding Agent</h2>
         </div>
-      )}
+        <button onClick={() => setIsSettingsOpen(true)} style={settingsToggleStyle}>
+          <Settings size={20} />
+          {selectedRepo && <span style={repoTag}>{selectedRepo}</span>}
+        </button>
+      </div>
 
-      {/* Settings Modal */}
+      {/* Chat Window */}
+      <div style={chatBoxStyle}>
+        {messages.map((m, i) => (
+          <div key={i} style={m.role === 'user' ? userRowStyle : botRowStyle}>
+            <div style={m.role === 'user' ? userBubbleStyle : botBubbleStyle}>
+              {m.text}
+              {m.hasPlan && !executing && (
+                <button onClick={executePlan} style={confirmButtonStyle}>
+                  <Rocket size={16} /> אשר ביצוע תוכנית
+                </button>
+              )}
+            </div>
+          </div>
+        ))}
+        {loading && <div style={botRowStyle}><Loader2 className="animate-spin" size={20} /></div>}
+        <div ref={chatEndRef} />
+      </div>
+
+      {/* Input Area */}
+      <div style={inputContainerStyle}>
+        <input 
+          value={inputText}
+          onChange={e => setInputText(e.target.value)}
+          onKeyPress={e => e.key === 'Enter' && sendMessage()}
+          placeholder="כתוב כאן הודעה..."
+          style={inputFieldStyle}
+          disabled={executing}
+        />
+        <button onClick={sendMessage} disabled={loading || executing} style={sendButtonStyle}>
+          <Send size={20} />
+        </button>
+      </div>
+
+      {/* Settings Modal (אותו לוגיקה כמו קודם) */}
       {isSettingsOpen && (
         <div style={modalOverlayStyle}>
           <div style={modalContentStyle}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
-              <h3 style={{ margin: 0 }}>⚙️ הגדרות והקשר</h3>
-              <button onClick={() => setIsSettingsOpen(false)} style={{ background: 'none', border: 'none', cursor: 'pointer' }}><X size={24} /></button>
+            <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '20px' }}>
+              <h3>⚙️ הגדרות</h3>
+              <X onClick={() => setIsSettingsOpen(false)} style={{cursor:'pointer'}} />
             </div>
-            
-            <div style={{ maxHeight: '70vh', overflowY: 'auto', paddingLeft: '5px' }}>
-              {/* API Keys Section */}
-              <div style={sectionStyle}>
-                <label style={labelStyle}>Gemini API Key:</label>
-                <input type="password" value={aiKey} onChange={e => setAiKey(e.target.value)} style={inputStyle} />
-                
-                <label style={labelStyle}>GitHub Token:</label>
-                <input type="password" value={githubToken} onChange={e => setGithubToken(e.target.value)} style={inputStyle} />
-              </div>
-
-              {/* User & Repo Section */}
-              <div style={sectionStyle}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '10px', color: '#475569' }}>
-                  <User size={16} /> <strong>User:</strong> {owner || 'Not connected'}
-                  <button onClick={fetchRepos} style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#2563eb' }}><RefreshCw size={14} /></button>
-                </div>
-                
-                <label style={labelStyle}>Select Repository:</label>
-                <select value={selectedRepo} onChange={e => setSelectedRepo(e.target.value)} style={inputStyle}>
-                  <option value="">-- Choose a project --</option>
-                  {repos.map(r => <option key={r} value={r}>{r}</option>)}
-                </select>
-              </div>
-
-              {/* LTR README Section */}
-              <div style={sectionStyle}>
-                <label style={labelStyle}>Project Context (README.md):</label>
-                <div style={readmeContainerStyle}>
-                  {readme}
-                </div>
-              </div>
-            </div>
-
-            <button onClick={() => setIsSettingsOpen(false)} style={{ ...buttonStyle, background: '#1e293b', marginTop: '20px' }}>
-              סגור ועדכן
-            </button>
+            <input type="password" placeholder="Gemini Key" value={aiKey} onChange={e => setAiKey(e.target.value)} style={modalInputStyle} />
+            <input type="password" placeholder="GitHub Token" value={githubToken} onChange={e => setGithubToken(e.target.value)} style={modalInputStyle} />
+            <select value={selectedRepo} onChange={e => setSelectedRepo(e.target.value)} style={modalInputStyle}>
+               {repos.map(r => <option key={r} value={r}>{r}</option>)}
+            </select>
+            <div style={readmeStyle}>{readme}</div>
+            <button onClick={() => setIsSettingsOpen(false)} style={saveButtonStyle}>שמור וסגור</button>
           </div>
         </div>
       )}
@@ -207,16 +168,23 @@ const App = () => {
 };
 
 // --- Styles ---
-const modalOverlayStyle = { position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(0,0,0,0.6)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000, padding: '10px' };
-const modalContentStyle = { background: 'white', padding: '25px', borderRadius: '20px', width: '100%', maxWidth: '500px', boxShadow: '0 25px 50px -12px rgba(0,0,0,0.25)', direction: 'rtl' };
-const sectionStyle = { marginBottom: '20px', paddingBottom: '20px', borderBottom: '1px solid #f1f5f9' };
-const inputStyle = { width: '100%', padding: '12px', marginBottom: '10px', borderRadius: '8px', border: '1px solid #cbd5e1', boxSizing: 'border-box', fontSize: '14px' };
-const buttonStyle = { width: '100%', padding: '14px', color: 'white', border: 'none', borderRadius: '10px', fontWeight: 'bold', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px', transition: 'opacity 0.2s' };
-const labelStyle = { display: 'block', marginBottom: '8px', fontSize: '14px', fontWeight: 'bold', color: '#1e293b' };
-const promptAreaStyle = { width: '100%', height: '120px', padding: '15px', borderRadius: '12px', border: '2px solid #e2e8f0', marginBottom: '15px', boxSizing: 'border-box', fontSize: '16px', resize: 'none', outline: 'none', focus: 'border-color: #2563eb' };
-const settingsButtonStyle = { background: 'white', border: '1px solid #e2e8f0', borderRadius: '12px', padding: '8px 12px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '10px', color: '#64748b' };
-const repoBadgeStyle = { fontSize: '12px', background: '#eff6ff', color: '#2563eb', padding: '4px 8px', borderRadius: '6px', fontWeight: 'bold' };
-const readmeContainerStyle = { background: '#f8fafc', padding: '12px', borderRadius: '8px', border: '1px solid #e2e8f0', fontSize: '13px', maxHeight: '150px', overflowY: 'auto', direction: 'ltr', textAlign: 'left', whiteSpace: 'pre-wrap', color: '#334155', fontFamily: 'monospace' };
-const finalizingStyle = { padding: '15px', background: '#f0fdfa', borderRadius: '10px', textAlign: 'center', color: '#0f766e', fontWeight: 'bold', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '10px' };
+const containerStyle = { height: '100vh', display: 'flex', flexDirection: 'column', direction: 'rtl', fontFamily: 'system-ui', backgroundColor: '#f9fafb' };
+const headerStyle = { padding: '15px 20px', background: 'white', borderBottom: '1px solid #e5e7eb', display: 'flex', justifyContent: 'space-between', alignItems: 'center' };
+const chatBoxStyle = { flex: 1, overflowY: 'auto', padding: '20px', display: 'flex', flexDirection: 'column', gap: '15px' };
+const userRowStyle = { display: 'flex', justifyContent: 'flex-start' };
+const botRowStyle = { display: 'flex', justifyContent: 'flex-end' };
+const userBubbleStyle = { background: '#2563eb', color: 'white', padding: '12px 18px', borderRadius: '18px 18px 0 18px', maxWidth: '80%', boxShadow: '0 2px 4px rgba(0,0,0,0.1)' };
+const botBubbleStyle = { background: 'white', color: '#1f2937', padding: '12px 18px', borderRadius: '18px 18px 18px 0', maxWidth: '80%', border: '1px solid #e5e7eb', boxShadow: '0 2px 4px rgba(0,0,0,0.05)' };
+const inputContainerStyle = { padding: '15px', background: 'white', borderTop: '1px solid #e5e7eb', display: 'flex', gap: '10px' };
+const inputFieldStyle = { flex: 1, padding: '12px', borderRadius: '25px', border: '1px solid #e5e7eb', outline: 'none', fontSize: '16px' };
+const sendButtonStyle = { background: '#2563eb', color: 'white', border: 'none', width: '45px', height: '45px', borderRadius: '50%', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' };
+const confirmButtonStyle = { marginTop: '10px', width: '100%', padding: '8px', background: '#10b981', color: 'white', border: 'none', borderRadius: '8px', cursor: 'pointer', fontWeight: 'bold', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '5px' };
+const settingsToggleStyle = { background: '#f3f4f6', border: 'none', padding: '8px 12px', borderRadius: '10px', display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer' };
+const repoTag = { fontSize: '12px', fontWeight: 'bold', color: '#2563eb' };
+const modalOverlayStyle = { position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(0,0,0,0.5)', zIndex: 1000, display: 'flex', alignItems: 'center', justifyContent: 'center' };
+const modalContentStyle = { background: 'white', padding: '25px', borderRadius: '20px', width: '90%', maxWidth: '450px' };
+const modalInputStyle = { width: '100%', padding: '10px', marginBottom: '10px', borderRadius: '8px', border: '1px solid #ddd', boxSizing: 'border-box' };
+const saveButtonStyle = { width: '100%', padding: '12px', background: '#1f2937', color: 'white', border: 'none', borderRadius: '10px', cursor: 'pointer' };
+const readmeStyle = { maxHeight: '150px', overflowY: 'auto', background: '#f8fafc', padding: '10px', fontSize: '12px', direction: 'ltr', textAlign: 'left', marginBottom: '10px', border: '1px solid #eee' };
 
 export default App;
