@@ -40,17 +40,27 @@ app.get('/api/repo/context', async (req, res) => {
 
 app.post('/api/chat', async (req, res) => {
   try {
-    const { ai } = getServices(req);
+    const { ai, github } = getServices(req);
     const { prompt, history, context } = req.body;
     
-    // אם חסר מפתח AI, נתריע מיד
-    if (!req.headers['x-ai-key']) throw new Error("חסר Gemini API Key בהגדרות");
+    if (!req.headers['x-ai-key']) throw new Error("Missing Gemini API Key");
 
-    const response = await ai.chat(prompt, history, context);
+    // התיקון: אנחנו מביאים את רשימת הקבצים האמיתית מגיטהאב עכשיו!
+    const realTimeFiles = await github.getAiMap(context.owner, context.repo);
+    
+    // מעדכנים את ה-context עם הרשימה האמיתית
+    const updatedContext = {
+      ...context,
+      projectMap: {
+        ...(context.projectMap || {}),
+        realTimeFileList: realTimeFiles // כאן הסוכן רואה מה באמת יש בתיקייה
+      }
+    };
+
+    const response = await ai.chat(prompt, history, updatedContext);
     res.json({ response });
   } catch (e) { 
-    console.error(e);
-    res.status(500).json({ error: `שגיאת AI: ${e.message}` }); 
+    res.status(500).json({ error: `AI Error: ${e.message}` }); 
   }
 });
 
