@@ -64,7 +64,6 @@ const App = () => {
 
       const aiRes = res.data.response;
       
-      // בדיקה אם יש תוכנית עבודה מוחבאת בתוך התגובה
       const planMatch = aiRes.match(/\[\[\[(.*?)\]\]\]/s);
       if (planMatch) {
         setPendingPlan(JSON.parse(planMatch[1]));
@@ -74,11 +73,13 @@ const App = () => {
         setMessages(prev => [...prev, { role: 'bot', text: aiRes }]);
       }
     } catch (e) {
-      setMessages(prev => [...prev, { role: 'bot', text: 'מצטער, קרתה שגיאה בחיבור.' }]);
+      // כאן הקסם: במקום הודעה כללית, נציג את מה שהשרת שלח
+      const errorDetail = e.response?.data?.error || e.message;
+      setMessages(prev => [...prev, { role: 'bot', text: `⚠️ שגיאה: ${errorDetail}` }]);
     }
     setLoading(false);
   };
-
+  
   const executePlan = async () => {
     setExecuting(true);
     setMessages(prev => [...prev, { role: 'bot', text: 'מתחיל בביצוע העדכונים בגיטהאב... 🔨' }]);
