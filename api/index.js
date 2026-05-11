@@ -76,59 +76,27 @@ app.post('/api/chat', async (req, res) => {
 });
 
 app.post('/api/execute', async (req, res) => {
-  console.log("--- תחילת ביצוע פקודה ---");
   try {
     const { github, ai } = getServices(req);
     const { plan, context } = req.body;
 
-    // בדיקה שהנתונים הגיעו תקינים
+    // הגנה: אם ה-Plan לא הגיע כמערך, לא ממשיכים
     if (!plan || !Array.isArray(plan)) {
-      throw new Error("ה-Plan שהתקבל אינו תקין או שאינו מערך");
+      return res.status(400).json({ error: "ה-Plan שהתקבל אינו תקין" });
     }
-
-    console.log("Plan details:", JSON.stringify(plan, null, 2));
 
     for (const action of plan) {
       for (const file of action.affectedFiles) {
-        console.log(`מנסה לעבוד על קובץ: ${file}`);
-        
-        let currentContent = ""; 
-        try {
-          currentContent = await github.getFile(context.owner, context.repo, file);
-          console.log(`תוכן קיים נשלף בהצלחה עבור ${file}`);
-        } catch (e) {
-          console.log(`קובץ חדש או שלא ניתן לקרוא אותו: ${file}`);
-        }
-
-        // בדיקה ש-aiService עובד
-        console.log("פונה ל-AI ליצירת/עריכת קוד...");
-        if (typeof ai.editCode !== 'function') {
-          throw new Error("פונקציית ai.editCode לא קיימת ב-AIService");
-        }
-        
+        const currentContent = await github.getFile(context.owner, context.repo, file);
         const newContent = await ai.editCode(currentContent, action.description);
-        
-        // ביצוע ה-Commit
-        console.log(`מבצע Update ב-GitHub עבור: ${file}`);
-        const result = await github.updateFile(context.owner, context.repo, file, newContent, action.description);
-        console.log("תגובת גיטהאב:", result.status);
+        // קריאה לפונקציה המעודכנת ב-Service
+        await github.updateFile(context.owner, context.repo, file, newContent, action.description);
       }
     }
-    
     res.json({ success: true });
   } catch (e) {
-    // הדפסה מפורטת לטרמינל של השרת
-    console.error("!!! שגיאת ביצוע קריטית !!!");
-    console.error("Message:", e.message);
-    console.error("Stack:", e.stack);
-    if (e.response) console.error("GitHub Data:", e.response.data);
-
-    // החזרת השגיאה המפורטת לפרונטאנד
-    res.status(500).json({ 
-      error: e.message, 
-      details: e.response ? e.response.data : "No extra data",
-      step: "Check server logs for full stack trace"
-    });
+    console.error("Execution Error:", e.message);
+    res.status(500).json({ error: e.message });
   }
 });
 
