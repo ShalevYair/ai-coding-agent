@@ -39,32 +39,66 @@ app.post('/api/chat', async (req, res) => {
     const { ai, github } = getServices(req);
     const { prompt, history, context } = req.body;
 
-    // 1. שליפת רשימת קבצים
-    const allFiles = await github.getAiMap(context.owner, context.repo);
-    
-    // 2. קריאה אוטומטית של קבצים רלוונטיים (README תמיד בפנים)
-    let extraContext = `Current files: ${allFiles.join(', ')}\n`;
-    if (allFiles.includes('README.md')) {
-      const readme = await github.getFile(context.owner, context.repo, 'README.md');
-      extraContext += `README Content: ${readme}\n`;
+    if (!context.owner || !context.repo) {
+      return res.json({ response: "חובה לבחור פרויקט בהגדרות." });
     }
 
-    // 3. בניית ה-System Prompt (זה מה שהיה חסר!)
-    const systemInstructions = `
-      You are an AI Coding Agent. 
-      Format: Always use [[[{"id":1,"description":"...","affectedFiles":["..."]}]]] for changes.
-      Language: Answer in Hebrew, briefly.
-      Context: Owner: ${context.owner}, Repo: ${context.repo}.
+    // 1. שליפת רשימת הקבצים המעודכנת
+    const allFiles = await github.getAiMap(context.owner, context.repo);
+    
+    // 2. קריאה אוטומטית של "קבצי זיכרון" (הסוכן תמיד יראה אותם)
+    let coreContent = "";
+    const coreFiles = ['README.md', 'project_map.json'];
+    
+    for (const file of coreFiles) {
+      if (allFiles.includes(file)) {
+        try {
+          const content = await github.getFile(context.owner, context.repo, file);
+          coreContent += `\n--- Content of ${file} (Core File) ---\n${content}\n`;
+        } catch (e) { console.log(`Failed to read core file: ${file}`); }
+      }
+    }
+
+    // 3. זיהוי דינמי: האם המשתמש שאל על קובץ ספציפי מרשימת הקבצים?
+    let dynamicContent = "";
+    for (const fileName of allFiles) {
+      // בודק אם שם הקובץ מופיע בתוך השאלה של המשתמש (בצורה שלא תלויה באותיות גדולות/קטנות)
+      if (prompt.toLowerCase().includes(fileName.toLowerCase()) && !coreFiles.includes(fileName)) {
+        try {
+          console.log(`Dynamic fetching for: ${fileName}`);
+          const content = await github.getFile(context.owner, context.repo, fileName);
+          dynamicContent += `\n--- Content of ${fileName} (Requested) ---\n${content}\n`;
+        } catch (e) { console.log(`Failed to fetch dynamic file: ${fileName}`); }
+      }
+    }
+
+    // 4. בניית הפרומפט המועשר (Enriched Prompt)
+    // אנחנו מזריקים לי את כל הידע לפני שאני בכלל עונה
+    const enrichedPrompt = `
+      Project Context for ${context.owner}/${context.repo}:
+      Files in repo: ${allFiles.join(', ')}
+      
+      ${coreContent}
+      ${dynamicContent}
+      
+      User Message: ${prompt}
     `;
 
-    const finalPrompt = `${systemInstructions}\n\n${extraContext}\n\nUser: ${prompt}`;
+    // 5. עדכון ה-Context עבור ה-AI (כדי שאדע מה רשימת הקבצים)
+    const updatedContext = {
+      ...context,
+      realTimeFileList: allFiles
+    };
 
-    const response = await ai.chat(finalPrompt, history.slice(-10), context);
+    const response = await ai.chat(enrichedPrompt, history.slice(-10), updatedContext);
     res.json({ response });
+
   } catch (e) {
-    res.status(500).json({ error: e.message });
+    console.error("Chat Logic Error:", e.message);
+    res.status(500).json({ error: "שגיאה בעיבוד הצ'אט: " + e.message });
   }
 });
+
 
 app.post('/api/execute', async (req, res) => {
   try {
