@@ -121,4 +121,79 @@ const App = () => {
             <select value={selectedRepo} onChange={e => setSelectedRepo(e.target.value)} style={{ padding: '5px', borderRadius: '4px' }}>
               {repos.map(r => <option key={r} value={r}>{r}</option>)}
             </select>
-            <button onClick={fetchGitHubData} style={{ background: 'none', border: 'none',
+            <button onClick={fetchGitHubData} style={{ background: 'none', border: 'none', cursor: 'pointer', marginRight: '5px' }}>
+              <RefreshCw size={16} className={fetchingRepos ? 'animate-spin' : ''} />
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* קלט AI */}
+      <textarea 
+        value={prompt} 
+        onChange={e => setPrompt(e.target.value)} 
+        placeholder="מה תרצה לבנות?"
+        style={{ width: '100%', height: '80px', padding: '10px', borderRadius: '8px', border: '1px solid #cbd5e1', marginBottom: '10px', boxSizing: 'border-box' }} 
+      />
+      
+      <button 
+        onClick={generatePlan} 
+        disabled={loading || executing} 
+        style={{ width: '100%', padding: '12px', background: '#2563eb', color: 'white', border: 'none', borderRadius: '6px', fontWeight: 'bold', cursor: 'pointer' }}
+      >
+        {loading ? <Loader2 className="animate-spin" style={{margin:'0 auto'}} /> : "הכן תוכנית עבודה 📋"}
+      </button>
+
+      {/* תוכנית עבודה וביצוע */}
+      {plan && (
+        <div style={{ marginTop: '30px', borderTop: '2px solid #e2e8f0', paddingTop: '20px' }}>
+          <h3>📋 שלבי הביצוע:</h3>
+          {plan.map((step, index) => (
+            <div key={index} style={{ 
+              display: 'flex', 
+              justifyContent: 'space-between', 
+              alignItems: 'center', 
+              padding: '12px', 
+              background: index === currentStep ? '#eff6ff' : 'white', 
+              border: '1px solid #e2e8f0', 
+              borderRadius: '8px', 
+              marginBottom: '10px' 
+            }}>
+              <div style={{ flex: 1 }}>
+                <strong>{step.id}.</strong> {step.description}
+                <div style={{ fontSize: '12px', color: '#64748b' }}>קובץ: {step.affectedFiles?.[0]}</div>
+              </div>
+              
+              {index < currentStep || (currentStep === plan.length) ? (
+                <CheckCircle2 color="#10b981" />
+              ) : index === currentStep && executing ? (
+                <Loader2 className="animate-spin" color="#2563eb" />
+              ) : null}
+            </div>
+          ))}
+
+          <button 
+            onClick={executeFullPlan} 
+            disabled={executing}
+            style={{ 
+              width: '100%', 
+              marginTop: '20px', 
+              padding: '15px', 
+              background: '#059669', 
+              color: 'white', 
+              border: 'none', 
+              borderRadius: '8px', 
+              fontSize: '18px', 
+              fontWeight: 'bold', 
+              cursor: 'pointer' 
+            }}
+          >
+            {executing ? "הסוכן עובד על הפרויקט... 🔨" : "🚀 בצע את כל התוכנית בגיטהאב!"}
+          </button>
+        </div>
+      )}
+    </div>
+  );
+};
+
+export default App;
