@@ -59,25 +59,27 @@ app.post('/api/chat', async (req, res) => {
       }
     }
 
-    // 3. זיהוי דינמי חכם: מחפש חלקי נתיב או שמות קבצים
+    // 3. זיהוי דינמי חכם במיוחד (Fuzzy matching)
     let dynamicContent = "";
-    for (const filePath of allFiles) {
-      const fileName = filePath.split('/').pop(); // השם בלבד (למשל index.js)
-      const cleanPrompt = prompt.toLowerCase();
-      const lowerFilePath = filePath.toLowerCase();
-      const lowerFileName = fileName.toLowerCase();
+    const lowerPrompt = prompt.toLowerCase();
     
-      // בדיקה אם המשתמש הזכיר את הנתיב המלא, את שם הקובץ, או את הנתיב עם נקודתיים
-      if (cleanPrompt.includes(lowerFilePath) || 
-          cleanPrompt.includes(lowerFileName) || 
-          cleanPrompt.includes(lowerFilePath.replace('/', ':'))) {
-        
-        if (!coreFiles.includes(filePath)) { // אל תקרא שוב אם זה README
-          try {
-            console.log(`Smart Fetching: ${filePath}`);
-            const content = await github.getFile(context.owner, context.repo, filePath);
-            dynamicContent += `\n--- Content of ${filePath} ---\n${content}\n`;
-          } catch (e) { console.log(`Failed to fetch: ${filePath}`); }
+    for (const filePath of allFiles) {
+      const lowerPath = filePath.toLowerCase();
+      const fileName = filePath.split('/').pop().toLowerCase();
+      const fileNameNoExt = fileName.split('.').slice(0, -1).join('.').toLowerCase();
+    
+      // בודק אם השאלה מכילה את הנתיב המלא, את שם הקובץ, או את השם בלי הסיומת (למשל TEST)
+      const isRequested = lowerPrompt.includes(lowerPath) || 
+                         lowerPrompt.includes(fileName) || 
+                         (fileNameNoExt.length > 2 && lowerPrompt.includes(fileNameNoExt));
+    
+      if (isRequested && !coreFiles.includes(filePath)) {
+        try {
+          console.log(`🔍 Smart Fetching: ${filePath}`);
+          const content = await github.getFile(context.owner, context.repo, filePath);
+          dynamicContent += `\n--- Content of ${filePath} ---\n${content}\n`;
+        } catch (e) {
+          console.log(`❌ Failed to fetch ${filePath}`);
         }
       }
     }
