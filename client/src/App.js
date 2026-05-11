@@ -60,9 +60,10 @@ const App = () => {
         prompt: userMsg,
         history: messages,
         context: { 
+          owner, // הוספנו את זה
           repo: selectedRepo, 
           readme: readme || "No README yet", 
-          projectMap: projectMap || {} // שולח אובייקט ריק אם אין מפה
+          projectMap: projectMap || {} 
         }
       }, { headers });
 
