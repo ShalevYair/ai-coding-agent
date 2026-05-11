@@ -76,27 +76,44 @@ app.post('/api/chat', async (req, res) => {
 });
 
 app.post('/api/execute', async (req, res) => {
+  console.log("--- Start Execution ---");
   try {
     const { github, ai } = getServices(req);
     const { plan, context } = req.body;
 
+    console.log("Plan received:", JSON.stringify(plan));
+    console.log("Context:", context.owner, "/", context.repo);
+
     for (const action of plan) {
       for (const file of action.affectedFiles) {
+        console.log(`Processing file: ${file}`);
+        
         let currentContent = ""; 
         try {
           currentContent = await github.getFile(context.owner, context.repo, file);
+          console.log(`Current content fetched for ${file} (Length: ${currentContent.length})`);
         } catch (e) {
-          console.log(`קובץ חדש: ${file}`);
+          console.log(`Notice: File ${file} seems new or unreachable. Starting empty.`);
         }
 
+        console.log(`Calling AI to edit code for: ${file}...`);
         const newContent = await ai.editCode(currentContent, action.description);
-        await github.updateFile(context.owner, context.repo, file, newContent, action.description);
+        
+        console.log(`Attempting to commit to GitHub: ${file}`);
+        const ghResponse = await github.updateFile(context.owner, context.repo, file, newContent, action.description);
+        console.log(`GitHub Response Success: ${ghResponse.status}`);
       }
     }
+    
     res.json({ success: true });
   } catch (e) {
-    console.error("Execution Error:", e);
-    res.status(500).json({ error: `שגיאת ביצוע: ${e.message}` });
+    // כאן אנחנו מרחיבים את השגיאה שתחזור אליך למסך
+    console.error("Full Execution Error:", e);
+    res.status(500).json({ 
+      error: e.message, 
+      stack: e.stack,
+      details: e.response ? e.response.data : "No additional GitHub details"
+    });
   }
 });
 
