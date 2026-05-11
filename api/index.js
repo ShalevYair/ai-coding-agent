@@ -76,43 +76,58 @@ app.post('/api/chat', async (req, res) => {
 });
 
 app.post('/api/execute', async (req, res) => {
-  console.log("--- Start Execution ---");
+  console.log("--- תחילת ביצוע פקודה ---");
   try {
     const { github, ai } = getServices(req);
     const { plan, context } = req.body;
 
-    console.log("Plan received:", JSON.stringify(plan));
-    console.log("Context:", context.owner, "/", context.repo);
+    // בדיקה שהנתונים הגיעו תקינים
+    if (!plan || !Array.isArray(plan)) {
+      throw new Error("ה-Plan שהתקבל אינו תקין או שאינו מערך");
+    }
+
+    console.log("Plan details:", JSON.stringify(plan, null, 2));
 
     for (const action of plan) {
       for (const file of action.affectedFiles) {
-        console.log(`Processing file: ${file}`);
+        console.log(`מנסה לעבוד על קובץ: ${file}`);
         
         let currentContent = ""; 
         try {
           currentContent = await github.getFile(context.owner, context.repo, file);
-          console.log(`Current content fetched for ${file} (Length: ${currentContent.length})`);
+          console.log(`תוכן קיים נשלף בהצלחה עבור ${file}`);
         } catch (e) {
-          console.log(`Notice: File ${file} seems new or unreachable. Starting empty.`);
+          console.log(`קובץ חדש או שלא ניתן לקרוא אותו: ${file}`);
         }
 
-        console.log(`Calling AI to edit code for: ${file}...`);
+        // בדיקה ש-aiService עובד
+        console.log("פונה ל-AI ליצירת/עריכת קוד...");
+        if (typeof ai.editCode !== 'function') {
+          throw new Error("פונקציית ai.editCode לא קיימת ב-AIService");
+        }
+        
         const newContent = await ai.editCode(currentContent, action.description);
         
-        console.log(`Attempting to commit to GitHub: ${file}`);
-        const ghResponse = await github.updateFile(context.owner, context.repo, file, newContent, action.description);
-        console.log(`GitHub Response Success: ${ghResponse.status}`);
+        // ביצוע ה-Commit
+        console.log(`מבצע Update ב-GitHub עבור: ${file}`);
+        const result = await github.updateFile(context.owner, context.repo, file, newContent, action.description);
+        console.log("תגובת גיטהאב:", result.status);
       }
     }
     
     res.json({ success: true });
   } catch (e) {
-    // כאן אנחנו מרחיבים את השגיאה שתחזור אליך למסך
-    console.error("Full Execution Error:", e);
+    // הדפסה מפורטת לטרמינל של השרת
+    console.error("!!! שגיאת ביצוע קריטית !!!");
+    console.error("Message:", e.message);
+    console.error("Stack:", e.stack);
+    if (e.response) console.error("GitHub Data:", e.response.data);
+
+    // החזרת השגיאה המפורטת לפרונטאנד
     res.status(500).json({ 
       error: e.message, 
-      stack: e.stack,
-      details: e.response ? e.response.data : "No additional GitHub details"
+      details: e.response ? e.response.data : "No extra data",
+      step: "Check server logs for full stack trace"
     });
   }
 });
