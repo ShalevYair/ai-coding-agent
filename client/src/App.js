@@ -1,89 +1,124 @@
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
-import { Loader2, CheckCircle2 } from 'lucide-react';
+import { Loader2, CheckCircle2, Settings, RefreshCw } from 'lucide-react';
 
 const App = () => {
+  // הגדרות וסטייט
   const [aiKey, setAiKey] = useState(localStorage.getItem('ai-key') || '');
   const [githubToken, setGithubToken] = useState(localStorage.getItem('github-token') || '');
   const [owner, setOwner] = useState('');
   const [repos, setRepos] = useState([]);
   const [selectedRepo, setSelectedRepo] = useState('');
-  const [prompt, setPrompt] = useState('בנה דף נחיתה פשוט');
+  const [prompt, setPrompt] = useState('בנה דף נחיתה פשוט עם כותרת וכפתור');
   const [plan, setPlan] = useState(null);
   const [loading, setLoading] = useState(false);
   const [executing, setExecuting] = useState(false);
   const [currentStep, setCurrentStep] = useState(-1);
+  const [fetchingRepos, setFetchingRepos] = useState(false);
 
+  // שמירת מפתחות וטעינת נתונים מגיטהאב
   useEffect(() => {
-    if (githubToken) {
-      axios.get('/api/user/repos', { headers: { 'x-github-token': githubToken, 'x-ai-key': aiKey } })
-        .then(res => { setOwner(res.data.owner); setRepos(res.data.repos); setSelectedRepo(res.data.repos[0]); })
-        .catch(() => {});
+    localStorage.setItem('ai-key', aiKey);
+    localStorage.setItem('github-token', githubToken);
+    if (githubToken && githubToken.startsWith('ghp_')) {
+      fetchGitHubData();
     }
   }, [githubToken, aiKey]);
 
-  const generatePlan = async () => {
-    setLoading(true); setPlan(null);
+  const fetchGitHubData = async () => {
+    setFetchingRepos(true);
     try {
-      const res = await axios.post('/api/plan', { prompt, owner, repo: selectedRepo }, 
-      { headers: { 'x-ai-key': aiKey, 'x-github-token': githubToken } });
+      const res = await axios.get('/api/user/repos', { 
+        headers: { 'x-github-token': githubToken, 'x-ai-key': aiKey } 
+      });
+      setOwner(res.data.owner);
+      setRepos(res.data.repos);
+      if (res.data.repos.length > 0 && !selectedRepo) {
+        setSelectedRepo(res.data.repos[0]);
+      }
+    } catch (err) {
+      console.error("נכשל במשיכת רפוזיטוריז");
+    }
+    setFetchingRepos(false);
+  };
+
+  // 1. יצירת תוכנית עבודה
+  const generatePlan = async () => {
+    if (!aiKey || !githubToken || !selectedRepo) {
+      alert("נא לוודא שכל השדות וההגדרות מלאים");
+      return;
+    }
+    setLoading(true);
+    setPlan(null);
+    setCurrentStep(-1);
+    try {
+      const res = await axios.post('/api/plan', 
+        { prompt, owner, repo: selectedRepo }, 
+        { headers: { 'x-ai-key': aiKey, 'x-github-token': githubToken } }
+      );
       setPlan(res.data.plan);
-    } catch (err) { alert("שגיאה ביצירת תוכנית"); }
+    } catch (err) {
+      const msg = err.response?.data?.error || err.message;
+      alert(`שגיאה ביצירת תוכנית: ${msg}`);
+    }
     setLoading(false);
   };
 
+  // 2. ביצוע כל התוכנית ברצף
   const executeFullPlan = async () => {
     setExecuting(true);
     for (let i = 0; i < plan.length; i++) {
       setCurrentStep(i);
       try {
         await axios.post('/api/execute', {
-          owner, repo: selectedRepo,
+          owner,
+          repo: selectedRepo,
           filePath: plan[i].affectedFiles[0],
           instructions: plan[i].description
-        }, { headers: { 'x-ai-key': aiKey, 'x-github-token': githubToken } });
-      } catch (err) { alert(`נכשל בשלב ${i+1}`); break; }
+        }, { 
+          headers: { 'x-ai-key': aiKey, 'x-github-token': githubToken } 
+        });
+      } catch (err) {
+        const errorMsg = err.response?.data?.error || err.message;
+        alert(`❌ נכשל בשלב ${i + 1}:\n${errorMsg}`);
+        setExecuting(false);
+        return; // עוצר את הביצוע אם יש שגיאה
+      }
     }
     setExecuting(false);
-    setCurrentStep(plan.length);
-    alert("הסוכן סיים!");
+    setCurrentStep(plan.length); // מסמן שכל השלבים הושלמו
+    alert("🚀 הצלחה! הסוכן סיים לבנות ולעדכן את כל הקבצים בגיטהאב.");
   };
 
   return (
-    <div style={{ padding: '20px', fontFamily: 'sans-serif', maxWidth: '500px', margin: '0 auto', direction: 'rtl' }}>
-      <h1>🤖 AI Agent</h1>
-      <input type="password" placeholder="Gemini Key" value={aiKey} onChange={e => setAiKey(e.target.value)} style={{width:'95%', marginBottom:'10px'}} />
-      <input type="password" placeholder="GitHub Token" value={githubToken} onChange={e => setGithubToken(e.target.value)} style={{width:'95%', marginBottom:'10px'}} />
-      
+    <div style={{ padding: '20px', fontFamily: 'sans-serif', maxWidth: '600px', margin: '0 auto', direction: 'rtl' }}>
+      <h1 style={{ textAlign: 'center' }}>🤖 AI Coding Agent</h1>
+
+      {/* הגדרות */}
+      <section style={{ background: '#f1f5f9', padding: '15px', borderRadius: '10px', marginBottom: '20px', border: '1px solid #e2e8f0' }}>
+        <h3 style={{ marginTop: 0 }}><Settings size={18} /> חיבורים</h3>
+        <input 
+          type="password" 
+          placeholder="Gemini API Key" 
+          value={aiKey} 
+          onChange={e => setAiKey(e.target.value)} 
+          style={{ width: '95%', padding: '10px', marginBottom: '10px', borderRadius: '5px', border: '1px solid #cbd5e1' }} 
+        />
+        <input 
+          type="password" 
+          placeholder="GitHub Token (ghp_...)" 
+          value={githubToken} 
+          onChange={e => setGithubToken(e.target.value)} 
+          style={{ width: '95%', padding: '10px', borderRadius: '5px', border: '1px solid #cbd5e1' }} 
+        />
+      </section>
+
+      {/* בחירת פרויקט */}
       {owner && (
-        <div style={{marginBottom:'10px'}}>
-          <strong>פרויקט:</strong>
-          <select value={selectedRepo} onChange={e => setSelectedRepo(e.target.value)}>
-            {repos.map(r => <option key={r} value={r}>{r}</option>)}
-          </select>
-        </div>
-      )}
-
-      <textarea value={prompt} onChange={e => setPrompt(e.target.value)} style={{width:'100%', height:'50px'}} />
-      <button onClick={generatePlan} disabled={loading} style={{width:'100%', padding:'10px', background:'#2563eb', color:'white', border:'none', marginTop:'10px'}}>
-        {loading ? <Loader2 className="animate-spin" /> : "צור תוכנית"}
-      </button>
-
-      {plan && (
-        <div style={{marginTop:'20px', border:'1px solid #ddd', padding:'10px'}}>
-          {plan.map((s, i) => (
-            <div key={i} style={{display:'flex', justifyContent:'space-between', padding:'5px', background: i === currentStep ? '#f0f9ff' : 'none'}}>
-              <span>{s.description}</span>
-              {i < currentStep ? <CheckCircle2 size={16} color="green" /> : i === currentStep && executing ? <Loader2 size={16} className="animate-spin" /> : null}
-            </div>
-          ))}
-          <button onClick={executeFullPlan} disabled={executing} style={{width:'100%', marginTop:'10px', padding:'10px', background:'#10b981', color:'white', border:'none'}}>
-            {executing ? "מבצע..." : "🚀 בצע הכל!"}
-          </button>
-        </div>
-      )}
-    </div>
-  );
-};
-
-export default App;
+        <div style={{ marginBottom: '20px', padding: '10px', background: '#f0fdf4', borderRadius: '8px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+          <span><strong>מחובר כ:</strong> {owner}</span>
+          <div>
+            <select value={selectedRepo} onChange={e => setSelectedRepo(e.target.value)} style={{ padding: '5px', borderRadius: '4px' }}>
+              {repos.map(r => <option key={r} value={r}>{r}</option>)}
+            </select>
+            <button onClick={fetchGitHubData} style={{ background: 'none', border: 'none',
