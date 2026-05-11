@@ -15,14 +15,19 @@ class GitHubService {
   async commitFile(owner, repo, path, content, message) {
     let sha;
     try {
+      // מנסים למצוא אם הקובץ קיים כדי לקבל את ה-SHA שלו
       const { data } = await this.octokit.rest.repos.getContent({ owner, repo, path });
       sha = data.sha;
-    } catch (e) { }
+    } catch (e) { /* קובץ חדש */ }
 
     return this.octokit.rest.repos.createOrUpdateFileContents({
-      owner, repo, path, message,
+      owner,
+      repo,
+      path,
+      message: message || "AI Update",
       content: Buffer.from(content).toString('base64'),
-      sha
+      sha,
+      branch: "main" // אנחנו מכריחים כתיבה ל-main
     });
   }
 
