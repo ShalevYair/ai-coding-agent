@@ -1,94 +1,96 @@
 const express = require('express');
 const cors = require('cors');
+const { Octokit } = require("@octokit/rest");
 const GitHubService = require('../server/services/githubService');
 const AIService = require('../server/services/aiService');
 
 const app = express();
-app.use(cors()); 
+app.use(cors());
 app.use(express.json());
 
-const getServices = (req) => ({
-  ai: new AIService('gemini', req.headers['x-ai-key']),
-  github: new GitHubService(req.headers['x-github-token'])
-});
+// פונקציית עזר להזרקת השירותים (Services) לכל בקשה
+const getServices = (req) => {
+  const aiKey = req.headers['x-ai-key'];
+  const githubToken = req.headers['x-github-token'];
+  
+  const github = new GitHubService(githubToken);
+  const ai = new AIService('google', aiKey);
+  
+  return { github, ai };
+};
 
-app.get('/api/user/repos', async (req, res) => {
+// 1. נתיב חדש: הבאת פרטי משתמש ורשימת פרויקטים מגיטהאב
+app.get('/api/github/user-data', async (req, res) => {
   try {
-    const { github } = getServices(req);
-    const user = await github.octokit.rest.users.getAuthenticated();
-    const repos = await github.octokit.rest.repos.listForAuthenticatedUser({ sort: 'updated' });
-    res.json({ owner: user.data.login, repos: repos.data.map(r => r.name) });
-  } catch (e) { res.status(500).json({ error: `שגיאת גיטהאב: ${e.message}` }); }
+    const token = req.headers['x-github-token'];
+    if (!token) throw new Error("Missing GitHub Token");
+
+    const octokit = new Octokit({ auth: token });
+    
+    // משיכת שם המשתמש
+    const { data: user } = await octokit.users.getAuthenticated();
+    
+    // משיכת 100 הרפוזיטורים האחרונים שעודכנו
+    const { data: repos } = await octokit.repos.listForAuthenticatedUser({
+      sort: 'updated',
+      per_page: 100
+    });
+
+    res.json({
+      username: user.login,
+      repos: repos.map(r => r.name)
+    });
+  } catch (e) {
+    res.status(500).json({ error: `GitHub Error: ${e.message}` });
+  }
 });
 
-app.get('/api/repo/context', async (req, res) => {
-  try {
-    const { github } = getServices(req);
-    const { owner, repo } = req.query;
-    const readme = await github.getFile(owner, repo, 'README.md');
-    const projectMapRaw = await github.getFile(owner, repo, 'project_map.json');
-    
-    // בדיקה אם המפה קיימת ותקינה
-    let projectMap = null;
-    if (projectMapRaw) {
-      try { projectMap = JSON.parse(projectMapRaw); } catch(err) { projectMap = null; }
-    }
-    
-    res.json({ readme, projectMap });
-  } catch (e) { res.json({ readme: '', projectMap: null }); }
-});
-
+// 2. נתיב הצ'אט המרכזי
 app.post('/api/chat', async (req, res) => {
   try {
     const { ai, github } = getServices(req);
     const { prompt, history, context } = req.body;
-    
-    if (!req.headers['x-ai-key']) throw new Error("Missing Gemini API Key");
 
-    // התיקון: אנחנו מביאים את רשימת הקבצים האמיתית מגיטהאב עכשיו!
+    // הבאת רשימת הקבצים האמיתית בזמן אמת מגיטהאב
     const realTimeFiles = await github.getAiMap(context.owner, context.repo);
     
-    // מעדכנים את ה-context עם הרשימה האמיתית
     const updatedContext = {
       ...context,
       projectMap: {
         ...(context.projectMap || {}),
-        realTimeFileList: realTimeFiles // כאן הסוכן רואה מה באמת יש בתיקייה
+        realTimeFileList: realTimeFiles
       }
     };
 
     const response = await ai.chat(prompt, history, updatedContext);
     res.json({ response });
-  } catch (e) { 
-    res.status(500).json({ error: `AI Error: ${e.message}` }); 
+  } catch (e) {
+    res.status(500).json({ error: `AI Error: ${e.message}` });
   }
 });
 
+// 3. נתיב ביצוע המשימות (Commit לגיטהאב)
 app.post('/api/execute', async (req, res) => {
   try {
-    const { ai, github } = getServices(req);
-    const { owner, repo, filePath, instructions } = req.body;
-    const oldCode = await github.getFile(owner, repo, filePath);
-    const newCode = await ai.editCode(oldCode, instructions);
-    await github.commitFile(owner, repo, filePath, newCode, instructions);
+    const { github, ai } = getServices(req);
+    const { plan, context } = req.body;
+
+    for (const file of plan[0].affectedFiles) {
+      const currentContent = await github.getFile(context.owner, context.repo, file);
+      const newContent = await ai.editCode(currentContent, plan[0].description);
+      await github.updateFile(context.owner, context.repo, file, newContent, plan[0].description);
+    }
+
     res.json({ success: true });
-  } catch (e) { res.status(500).json({ error: `שגיאת ביצוע: ${e.message}` }); }
+  } catch (e) {
+    res.status(500).json({ error: `Execution Error: ${e.message}` });
+  }
 });
 
-app.post('/api/repo/finalize', async (req, res) => {
-  try {
-    const { ai, github } = getServices(req);
-    const { owner, repo, prompt } = req.body;
-    const aiMap = await github.getAiMap(owner, repo);
-    
-    // שימוש ב-editCode כדי לייצר README ו-Map
-    const newReadme = await ai.editCode('', `צור קובץ README.md מעודכן לפרויקט שבו הרגע עשינו: ${prompt}`);
-    const newMap = await ai.editCode('', `צור קובץ project_map.json (פורמט JSON בלבד!) עבור רשימת הקבצים הבאה: ${JSON.stringify(aiMap)}`);
-    
-    await github.commitFile(owner, repo, 'README.md', newReadme, 'AI: Update README');
-    await github.commitFile(owner, repo, 'project_map.json', newMap, 'AI: Update Project Map');
-    res.json({ success: true });
-  } catch (e) { res.status(500).json({ error: `שגיאת סנכרון סופי: ${e.message}` }); }
-});
-
+// ייצוא עבור Vercel
 module.exports = app;
+
+// רק עבור הרצה מקומית (לא חובה ב-Vercel)
+if (require.main === module) {
+  app.listen(3001, () => console.log('Server running on port 3001'));
+}
