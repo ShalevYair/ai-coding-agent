@@ -22,13 +22,13 @@ class AIService {
       4. Always ask for confirmation before using the "[[[" block.
     `;
 
-    // מיפוי ההיסטוריה לפורמט של גוגל
+    // הופכים את ההיסטוריה לפורמט של גוגל
     const formattedHistory = (history || []).map(h => ({
       role: h.role === 'user' ? 'user' : 'model',
       parts: [{ text: h.text }],
     }));
 
-    // תיקון קריטי: גוגל מחייב שההיסטוריה תתחיל ב-'user'
+    // התיקון הקריטי: גוגל דורש שההודעה הראשונה תהיה של המשתמש (user)
     const firstUserIndex = formattedHistory.findIndex(h => h.role === 'user');
     const cleanHistory = firstUserIndex > -1 ? formattedHistory.slice(firstUserIndex) : [];
 
