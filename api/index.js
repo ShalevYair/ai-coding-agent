@@ -33,45 +33,45 @@ app.get('/api/github/user-data', async (req, res) => {
   }
 });
 
+// api/index.js - עדכון נתיב ה-Chat
 app.post('/api/chat', async (req, res) => {
   try {
     const { ai, github } = getServices(req);
     const { prompt, history, context } = req.body;
 
     if (!context.owner || !context.repo) {
-      return res.json({ response: "חובה לבחור פרויקט (Repository) כדי שאוכל לסרוק את הקבצים." });
+      return res.json({ response: "חובה לבחור פרויקט." });
     }
 
-    // 1. שליפת מבנה הקבצים המלא מה-GitHub Service
-    // ודא שב-githubService הפונקציה getAiMap משתמשת ב-recursive: true
+    // 1. קבלת רשימת הקבצים
     const allFiles = await github.getAiMap(context.owner, context.repo);
-    
-    const filteredFiles = Array.isArray(allFiles) 
-      ? allFiles.filter(f => 
-          !f.includes('.git/') && 
-          !f.includes('node_modules/') && 
-          !['HEAD', 'config', 'description', 'index'].includes(f)
-        )
-      : [];
+    const filteredFiles = Array.isArray(allFiles) ? allFiles.filter(f => !f.includes('.git/')) : [];
 
-    // 2. עדכון ה-Context עם רשימת הקבצים בזמן אמת
+    // 2. מנגנון "קריאה אוטומטית":
+    // אנחנו בודקים אם המשתמש הזכיר שם של קובץ שקיים ברשימה
+    let injectedContent = "";
+    for (const fileName of filteredFiles) {
+      if (prompt.includes(fileName)) {
+        console.log(`קורא תוכן עבור הקובץ: ${fileName}`);
+        const content = await github.getFile(context.owner, context.repo, fileName);
+        injectedContent += `\nContent of ${fileName}:\n${content}\n`;
+      }
+    }
+
+    // 3. הזרקת התוכן להודעה שנשלחת ל-AI
+    const enrichedPrompt = injectedContent 
+      ? `Base Context: The user is asking about specific files.\n${injectedContent}\n\nUser Question: ${prompt}`
+      : prompt;
+
     const updatedContext = {
       ...context,
-      realTimeFileList: filteredFiles, // הזרקה ישירה לרמה הראשונה של ה-context
-      projectMap: {
-        ...(context.projectMap || {}),
-        realTimeFileList: filteredFiles
-      }
+      realTimeFileList: filteredFiles
     };
 
-    const limitedHistory = Array.isArray(history) ? history.slice(-10) : [];
-
-    // 3. שליחה ל-AI - ה-aiService צריך לדעת לשרשר את ה-updatedContext לפרומפט
-    const response = await ai.chat(prompt, limitedHistory, updatedContext);
+    const response = await ai.chat(enrichedPrompt, history.slice(-10), updatedContext);
     res.json({ response });
   } catch (e) {
-    console.error("Chat Error:", e);
-    res.status(500).json({ error: `AI Error: ${e.message}` });
+    res.status(500).json({ error: e.message });
   }
 });
 
