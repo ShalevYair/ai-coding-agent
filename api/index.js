@@ -81,27 +81,29 @@ app.post('/api/chat', async (req, res) => {
 });
 
 // 3. נתיב ביצוע המשימות (Commit לגיטהאב)
+// בתוך api/index.js - נתיב ה-execute
 app.post('/api/execute', async (req, res) => {
   try {
     const { github, ai } = getServices(req);
     const { plan, context } = req.body;
 
-    for (const file of plan[0].affectedFiles) {
-      let currentContent = "";
-      try {
-        // מנסה להביא תוכן קיים. אם נכשל (קובץ חדש) - נשאר עם מחרוזת ריקה
-        currentContent = await github.getFile(context.owner, context.repo, file);
-      } catch (e) {
-        console.log(`Creating new file: ${file}`);
+    for (const action of plan) {
+      for (const file of action.affectedFiles) {
+        let currentContent = ""; 
+        try {
+          // מנסים לקרוא. אם אין קובץ - currentContent נשאר ריק וזה בסדר!
+          currentContent = await github.getFile(context.owner, context.repo, file);
+        } catch (e) {
+          console.log(`קובץ חדש מזוהה: ${file}`);
+        }
+
+        const newContent = await ai.editCode(currentContent, action.description);
+        await github.updateFile(context.owner, context.repo, file, newContent, action.description);
       }
-
-      const newContent = await ai.editCode(currentContent, plan[0].description);
-      await github.updateFile(context.owner, context.repo, file, newContent, plan[0].description);
     }
-
     res.json({ success: true });
   } catch (e) {
-    res.status(500).json({ error: `Execution Error: ${e.message}` });
+    res.status(500).json({ error: `שגיאת ביצוע: ${e.message}` });
   }
 });
 
