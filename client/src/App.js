@@ -93,15 +93,31 @@ function App() {
       const planMatch = aiRes.match(/\[\[\[(.*?)\]\]\]/s);
       
       if (planMatch) {
-        setPendingPlan(JSON.parse(planMatch[1]));
-        const cleanText = aiRes.replace(/\[\[\[.*?\]\]\]/s, '').trim();
-        setMessages(prev => [...prev, { role: 'bot', text: cleanText, hasPlan: true }]);
+        try {
+          let planData = JSON.parse(planMatch[1]);
+          
+          // התיקון הקריטי: אם ה-AI שלח אובייקט בודד, אנחנו הופכים אותו למערך []
+          // כדי שהשרת לא יזרוק שגיאת 400
+          const finalPlan = Array.isArray(planData) ? planData : [planData];
+          
+          setPendingPlan(finalPlan);
+          
+          const cleanText = aiRes.replace(/\[\[\[.*?\]\]\]/s, '').trim();
+          setMessages(prev => [...prev, { role: 'bot', text: cleanText, hasPlan: true }]);
+        } catch (parseError) {
+          console.error("JSON Parse Error:", parseError);
+          setMessages(prev => [...prev, { role: 'bot', text: aiRes }]);
+        }
       } else {
         setMessages(prev => [...prev, { role: 'bot', text: aiRes }]);
       }
+      
     } catch (e) {
-      setMessages(prev => [...prev, { role: 'bot', text: `⚠️ שגיאה: ${e.response?.data?.error || e.message}` }]);
+      // מציג את השגיאה המפורטת מה-Backend (למשל: "ה-Plan אינו מערך")
+      const errorMsg = e.response?.data?.error || e.message;
+      setMessages(prev => [...prev, { role: 'bot', text: `❌ שגיאה בביצוע: ${errorMsg}` }]);
     }
+    
     setLoading(false);
   };
 
