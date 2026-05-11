@@ -4,7 +4,8 @@ const GitHubService = require('../server/services/githubService');
 const AIService = require('../server/services/aiService');
 
 const app = express();
-app.use(cors()); app.use(express.json());
+app.use(cors()); 
+app.use(express.json());
 
 const getServices = (req) => ({
   ai: new AIService('gemini', req.headers['x-ai-key']),
@@ -21,7 +22,7 @@ app.get('/api/user/repos', async (req, res) => {
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
-// נתיב חדש: משיכת ה-README והמפה (Context)
+// משיכת README ומפה
 app.get('/api/repo/context', async (req, res) => {
   try {
     const { github } = getServices(req);
@@ -32,17 +33,18 @@ app.get('/api/repo/context', async (req, res) => {
   } catch (e) { res.json({ readme: '', projectMap: null }); }
 });
 
-app.post('/api/plan', async (req, res) => {
+// --- הנתיב החדש של הצ'אט ---
+app.post('/api/chat', async (req, res) => {
   try {
-    const { ai, github } = getServices(req);
-    const { prompt, owner, repo, context } = req.body;
-    const aiMap = await github.getAiMap(owner, repo);
-    // שולחים ל-AI גם את המפה הקיימת ואת ה-README כדי לחסוך טוקנים
-    const plan = await ai.generatePlan(prompt, aiMap, context);
-    res.json({ plan: JSON.parse(plan) });
+    const { ai } = getServices(req);
+    const { prompt, history, context } = req.body;
+    // הסוכן מחליט אם לענות סתם או להציע תוכנית עבודה
+    const response = await ai.chat(prompt, history, context);
+    res.json({ response });
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
+// ביצוע עדכון קוד
 app.post('/api/execute', async (req, res) => {
   try {
     const { ai, github } = getServices(req);
@@ -54,21 +56,16 @@ app.post('/api/execute', async (req, res) => {
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
-// נתיב חדש: עדכון המפה וה-README בסוף התהליך
+// עדכון סופי של README ומפה
 app.post('/api/repo/finalize', async (req, res) => {
   try {
     const { ai, github } = getServices(req);
     const { owner, repo, prompt } = req.body;
     const aiMap = await github.getAiMap(owner, repo);
-    
-    // ה-AI מייצר README ומפה מעודכנים על סמך מה שקרה
-    const updatePrompt = `Based on the last task: "${prompt}", generate an updated README.md and a project_map.json.`;
-    const newReadme = await ai.editCode('', `Update README for: ${prompt}`);
-    const newMap = await ai.generatePlan(`Update project map JSON for: ${prompt}`, aiMap);
-    
+    const newReadme = await ai.editCode('', `Update README for task: ${prompt}`);
+    const newMap = await ai.editCode('', `Create a JSON project map for files: ${JSON.stringify(aiMap)}`);
     await github.commitFile(owner, repo, 'README.md', newReadme, 'Update README');
     await github.commitFile(owner, repo, 'project_map.json', newMap, 'Update Project Map');
-    
     res.json({ success: true });
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
