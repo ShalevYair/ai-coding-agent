@@ -7,28 +7,33 @@ class AIService {
 
   async chat(prompt, history, context) {
     const genAI = new GoogleGenerativeAI(this.apiKey);
-    // שימוש במודל 2.5 פלאש כפי שסיכמנו
     const model = genAI.getGenerativeModel({ model: "gemini-2.5-flash" });
 
     const systemInstruction = `
-      You are an expert AI Coding Agent. 
-      Current Project Context: ${JSON.stringify(context.projectMap)}
+      You are an expert AI Coding Agent for the repo: ${context.repo}.
+      Project Context: ${JSON.stringify(context.projectMap)}
       README: ${context.readme}
 
       RULES:
-      1. Use HEBREW for chat, but keep code and file paths in English.
-      2. If the user wants to modify files, summarize the plan and add this EXACT JSON block at the end:
-         [[[{"id":1,"description":"Short task desc","affectedFiles":["path/to/file"]}]]]
-      3. Do NOT perform non-coding tasks (research, essays, etc.).
-      4. Always ask for confirmation before "[[[" block.
+      1. Use HEBREW for chat, English for code/paths.
+      2. If modifying files, summarize briefly and add this JSON:
+         [[[{"id":1,"description":"desc","affectedFiles":["path"]}]]]
+      3. ONLY technical tasks. Refuse research/essays.
+      4. Always ask for confirmation before using the "[[[" block.
     `;
 
-    // אתחול צ'אט עם היסטוריה (מטפל במקרה שהיא ריקה)
+    // מיפוי ההיסטוריה לפורמט של גוגל
+    const formattedHistory = (history || []).map(h => ({
+      role: h.role === 'user' ? 'user' : 'model',
+      parts: [{ text: h.text }],
+    }));
+
+    // תיקון קריטי: גוגל מחייב שההיסטוריה תתחיל ב-'user'
+    const firstUserIndex = formattedHistory.findIndex(h => h.role === 'user');
+    const cleanHistory = firstUserIndex > -1 ? formattedHistory.slice(firstUserIndex) : [];
+
     const chat = model.startChat({
-      history: (history || []).map(h => ({
-        role: h.role === 'user' ? 'user' : 'model',
-        parts: [{ text: h.text }],
-      })),
+      history: cleanHistory,
     });
 
     const result = await chat.sendMessage(systemInstruction + "\nUser Input: " + prompt);
@@ -38,7 +43,7 @@ class AIService {
   async editCode(currentCode, instructions) {
     const genAI = new GoogleGenerativeAI(this.apiKey);
     const model = genAI.getGenerativeModel({ model: "gemini-2.5-flash" });
-    const prompt = `Current Code:\n${currentCode}\n\nTask: ${instructions}\n\nReturn ONLY the new code. No markdown.`;
+    const prompt = `Current Code:\n${currentCode}\n\nTask: ${instructions}\n\nReturn ONLY the new full code. No markdown.`;
     const result = await model.generateContent(prompt);
     return result.response.text().replace(/```[a-z]*|```/g, "").trim();
   }
