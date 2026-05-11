@@ -11,50 +11,45 @@ class AIService {
 
   async chat(prompt, history, context) {
     try {
-      // 1. חילוץ רשימת הקבצים והפיכתה לטקסט קריא עבור ה-AI
-      const files = context?.projectMap?.realTimeFileList || [];
+      // 1. תיקון נתיב הקבצים - מוודא שאני מושך מכל מקום אפשרי ב-context
+      const files = context?.realTimeFileList || context?.projectMap?.realTimeFileList || [];
       const fileListString = files.length > 0 ? files.join(', ') : "התיקייה ריקה כרגע.";
 
-      // 2. הגדרת זהות הסוכן (System Instruction)
+      // 2. עדכון הוראות מערכת - הוספתי את חוק 6 ועדכנתי את חוק 1
       const systemInstruction = `
         You are an AUTHORITATIVE AI CODING AGENT. 
         Your mission is to manage, develop, and update the GitHub repository for the user.
 
         CORE RULES:
-        1. Always speak the truth based ONLY on the provided file list.
+        1. Base your answers on BOTH the file list AND any file content provided in the message.
         2. If 'project_map.json' or 'README.md' are missing, your priority is to suggest creating them.
         3. Respond VERY BRIEFLY in Hebrew (1-2 sentences). Code stays in English.
-        4. If you don't know something or the list is empty, say it clearly.
-        5. To create or modify files, you MUST provide a plan in this exact format:
-           [[[{"id":1,"description":"Brief task description","affectedFiles":["path/to/file"]}]]]
+        4. If you don't know something or information is missing, say it clearly.
+        5. To create or modify files, provide a plan: [[[{"id":1,"description":"...","affectedFiles":["..."]}]]]
+        6. You can see file contents if the server provides them in the 'USER MESSAGE' section.
       `;
 
-      // 3. הזרקת הקונטקסט (רשימת הקבצים) ישירות לתוך הפרומפט של המשתמש
-      // זה מבטיח שה-AI "רואה" את הקבצים בכל הודעה מחדש
+      // 3. הזרקת הקונטקסט - השארנו את המבנה אבל עכשיו ה-AI מורשה לקרוא את ה-prompt המועשר
       const contextualizedPrompt = `
-        CURRENT REPOSITORY FILES: ${fileListString}
-        USER MESSAGE: ${prompt}
+        REPOSITORY STRUCTURE: ${fileListString}
+        ${prompt}
       `;
 
-      // 4. הכנת ההיסטוריה לפורמט של Google Gemini
-      // ה-history מגיע מה-Frontend כמערך של {role, text}
       const contents = history.map(msg => ({
         role: msg.role === 'user' ? 'user' : 'model',
         parts: [{ text: msg.text }]
       }));
 
-      // הוספת ההודעה הנוכחית עם הקונטקסט
       contents.push({
         role: 'user',
         parts: [{ text: contextualizedPrompt }]
       });
 
-      // 5. קריאה ל-API
       const result = await this.model.generateContent({
         contents: contents,
         systemInstruction: systemInstruction,
         generationConfig: {
-          temperature: 0.2, // טמפרטורה נמוכה כדי למנוע הזיות
+          temperature: 0.1, // הורדתי עוד קצת כדי להיות הכי מדויק שיש
         }
       });
 
@@ -66,6 +61,7 @@ class AIService {
     }
   }
 
+  
   // פונקציה לעריכת קוד (משמשת ב-execute)
   async editCode(currentContent, taskDescription) {
     try {
