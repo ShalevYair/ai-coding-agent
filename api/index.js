@@ -51,14 +51,20 @@ app.post('/api/chat', async (req, res) => {
     const { ai, github } = getServices(req);
     const { prompt, history, context } = req.body;
 
-    // הבאת רשימת הקבצים האמיתית בזמן אמת מגיטהאב
-    const realTimeFiles = await github.getAiMap(context.owner, context.repo);
+    // 1. הבאת כל הקבצים
+    const allFiles = await github.getAiMap(context.owner, context.repo);
+    
+    // 2. סינון קריטי: מוריד את תיקיית .git וקבצי מערכת טכניים
+    const filteredFiles = allFiles.filter(f => 
+      !f.includes('.git/') && 
+      !['HEAD', 'config', 'description', 'index'].includes(f)
+    );
     
     const updatedContext = {
       ...context,
       projectMap: {
         ...(context.projectMap || {}),
-        realTimeFileList: realTimeFiles
+        realTimeFileList: filteredFiles // שולח רק את הקבצים האמיתיים של הקוד
       }
     };
 
