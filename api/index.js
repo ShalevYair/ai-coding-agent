@@ -39,36 +39,27 @@ app.post('/api/chat', async (req, res) => {
     const { ai, github } = getServices(req);
     const { prompt, history, context } = req.body;
 
-    if (!context.owner || !context.repo) {
-      return res.json({ response: "חובה לבחור פרויקט." });
-    }
-
-    // 1. קבלת רשימת הקבצים
+    // 1. שליפת רשימת קבצים
     const allFiles = await github.getAiMap(context.owner, context.repo);
-    const filteredFiles = Array.isArray(allFiles) ? allFiles.filter(f => !f.includes('.git/')) : [];
-
-    // 2. מנגנון "קריאה אוטומטית":
-    // אנחנו בודקים אם המשתמש הזכיר שם של קובץ שקיים ברשימה
-    let injectedContent = "";
-    for (const fileName of filteredFiles) {
-      if (prompt.includes(fileName)) {
-        console.log(`קורא תוכן עבור הקובץ: ${fileName}`);
-        const content = await github.getFile(context.owner, context.repo, fileName);
-        injectedContent += `\nContent of ${fileName}:\n${content}\n`;
-      }
+    
+    // 2. קריאה אוטומטית של קבצים רלוונטיים (README תמיד בפנים)
+    let extraContext = `Current files: ${allFiles.join(', ')}\n`;
+    if (allFiles.includes('README.md')) {
+      const readme = await github.getFile(context.owner, context.repo, 'README.md');
+      extraContext += `README Content: ${readme}\n`;
     }
 
-    // 3. הזרקת התוכן להודעה שנשלחת ל-AI
-    const enrichedPrompt = injectedContent 
-      ? `Base Context: The user is asking about specific files.\n${injectedContent}\n\nUser Question: ${prompt}`
-      : prompt;
+    // 3. בניית ה-System Prompt (זה מה שהיה חסר!)
+    const systemInstructions = `
+      You are an AI Coding Agent. 
+      Format: Always use [[[{"id":1,"description":"...","affectedFiles":["..."]}]]] for changes.
+      Language: Answer in Hebrew, briefly.
+      Context: Owner: ${context.owner}, Repo: ${context.repo}.
+    `;
 
-    const updatedContext = {
-      ...context,
-      realTimeFileList: filteredFiles
-    };
+    const finalPrompt = `${systemInstructions}\n\n${extraContext}\n\nUser: ${prompt}`;
 
-    const response = await ai.chat(enrichedPrompt, history.slice(-10), updatedContext);
+    const response = await ai.chat(finalPrompt, history.slice(-10), context);
     res.json({ response });
   } catch (e) {
     res.status(500).json({ error: e.message });
