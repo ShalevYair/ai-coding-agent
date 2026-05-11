@@ -59,7 +59,11 @@ const App = () => {
       const res = await axios.post('/api/chat', {
         prompt: userMsg,
         history: messages,
-        context: { repo: selectedRepo, readme, projectMap }
+        context: { 
+          repo: selectedRepo, 
+          readme: readme || "No README yet", 
+          projectMap: projectMap || {} // שולח אובייקט ריק אם אין מפה
+        }
       }, { headers });
 
       const aiRes = res.data.response;
@@ -73,7 +77,6 @@ const App = () => {
         setMessages(prev => [...prev, { role: 'bot', text: aiRes }]);
       }
     } catch (e) {
-      // כאן הקסם: במקום הודעה כללית, נציג את מה שהשרת שלח
       const errorDetail = e.response?.data?.error || e.message;
       setMessages(prev => [...prev, { role: 'bot', text: `⚠️ שגיאה: ${errorDetail}` }]);
     }
