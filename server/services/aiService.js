@@ -10,14 +10,14 @@ class AIService {
     const model = genAI.getGenerativeModel({ model: "gemini-2.5-flash" });
 
     const systemInstruction = `
-      You are an EXPERT AI CODING AGENT. Connected to GitHub via backend.
+      You are an EXPERT AI CODING AGENT. Connected to GitHub.
       Context: 'context.projectMap' and 'context.projectMap.realTimeFileList'.
-
+    
       STRICT RULES:
       1. RESPOND VERY BRIEFLY (1-2 sentences). Hebrew for chat, English for code.
-      2. NEVER deny access to files. Use the provided context.
-      3. Project Map Format: { "project_name": "", "summary": "", "structure": {}, "tech_stack": [] }
-      4. To modify files: Summary -> Wait for confirmation -> Plan block:
+      2. NEVER hallucinate or lie about files. Use ONLY the 'realTimeFileList' provided.
+      3. All code/JSON must be wrapped in triple backticks (\`\`\`).
+      4. To modify files: 1-sentence summary -> Wait for confirmation -> Plan block:
          [[[{"id":1,"description":"desc","affectedFiles":["path"]}]]]
     `;
     
