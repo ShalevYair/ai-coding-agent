@@ -1,52 +1,59 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect } from 'react';
 import axios from 'axios';
-import { Loader2, CheckCircle2, Settings, Send, BrainCircuit, Rocket, X, User, Bot } from 'lucide-react';
+import { Settings, Send, Loader2, CheckCircle2 } from 'lucide-react';
 
-const App = () => {
-  const [aiKey, setAiKey] = useState(localStorage.getItem('ai-key') || '');
-  const [githubToken, setGithubToken] = useState(localStorage.getItem('github-token') || '');
-  const [owner, setOwner] = useState('');
-  const [repos, setRepos] = useState([]);
-  const [selectedRepo, setSelectedRepo] = useState(localStorage.getItem('selected-repo') || '');
-  const [readme, setReadme] = useState('');
-  const [projectMap, setProjectMap] = useState(null);
-  
-  const [messages, setMessages] = useState([]);
+// פונקציית עזר לעיצוב קוד (LTR) וטקסט רגיל (RTL)
+const formatMessage = (text) => {
+  if (!text) return null;
+  const parts = text.split(/(```[\s\S]*?```)/g);
+  return parts.map((part, index) => {
+    if (part.startsWith('```')) {
+      const code = part.replace(/```[a-z]*\n?|```/g, '').trim();
+      return (
+        <div key={index} style={{ direction: 'ltr', textAlign: 'left', margin: '15px 0' }}>
+          <pre style={{ 
+            background: '#1e293b', 
+            color: '#e2e8f0', 
+            padding: '12px', 
+            borderRadius: '8px', 
+            overflowX: 'auto', 
+            fontSize: '13px', 
+            border: '1px solid #334155',
+            fontFamily: 'monospace'
+          }}>
+            <code>{code}</code>
+          </pre>
+        </div>
+      );
+    }
+    return <span key={index} style={{ whiteSpace: 'pre-wrap' }}>{part}</span>;
+  });
+};
+
+function App() {
+  const [messages, setMessages] = useState([{ role: 'bot', text: 'שלום! מה תרצה שנעשה היום בפרויקט?' }]);
   const [inputText, setInputText] = useState('');
   const [loading, setLoading] = useState(false);
+  const [showSettings, setShowSettings] = useState(false);
   const [pendingPlan, setPendingPlan] = useState(null);
-  const [executing, setExecuting] = useState(false);
-  const [isSettingsOpen, setIsSettingsOpen] = useState(false);
-  
-  const chatEndRef = useRef(null);
-  const headers = { 'x-github-token': githubToken, 'x-ai-key': aiKey };
 
-  // גלילה אוטומטית לסוף הצ'אט
-  useEffect(() => { chatEndRef.current?.scrollIntoView({ behavior: "smooth" }); }, [messages]);
+  // הגדרות (נשמרות בדפדפן)
+  const [aiKey, setAiKey] = useState(localStorage.getItem('ai_key') || '');
+  const [githubToken, setGithubToken] = useState(localStorage.getItem('gh_token') || '');
+  const [owner, setOwner] = useState(localStorage.getItem('owner') || '');
+  const [selectedRepo, setSelectedRepo] = useState(localStorage.getItem('selected_repo') || '');
 
   useEffect(() => {
-    if (!aiKey || !githubToken) setIsSettingsOpen(true);
-    if (githubToken) fetchRepos();
-    // הודעת שלום
-    setMessages([{ role: 'bot', text: 'שלום! מה תרצה שנעשה היום בפרויקט?' }]);
-  }, []);
+    localStorage.setItem('ai_key', aiKey);
+    localStorage.setItem('gh_token', githubToken);
+    localStorage.setItem('owner', owner);
+    localStorage.setItem('selected_repo', selectedRepo);
+  }, [aiKey, githubToken, owner, selectedRepo]);
 
-  const fetchRepos = async () => {
-    try {
-      const res = await axios.get('/api/user/repos', { headers });
-      setOwner(res.data.owner); setRepos(res.data.repos);
-      if (res.data.repos.length > 0 && !selectedRepo) setSelectedRepo(res.data.repos[0]);
-    } catch (e) {}
+  const headers = {
+    'x-ai-key': aiKey,
+    'x-github-token': githubToken
   };
-
-  const fetchContext = async () => {
-    try {
-      const res = await axios.get(`/api/repo/context?owner=${owner}&repo=${selectedRepo}`, { headers });
-      setReadme(res.data.readme); setProjectMap(res.data.projectMap);
-    } catch (e) {}
-  };
-
-  useEffect(() => { if (selectedRepo && owner) fetchContext(); }, [selectedRepo, owner]);
 
   const sendMessage = async () => {
     if (!inputText.trim()) return;
@@ -60,15 +67,15 @@ const App = () => {
         prompt: userMsg,
         history: messages,
         context: { 
-          owner, // הוספנו את זה
-          repo: selectedRepo, 
-          readme: readme || "No README yet", 
-          projectMap: projectMap || {} 
+          owner, 
+          repo: selectedRepo,
+          projectMap: {} // השרת ימלא את זה אוטומטית מה-realTimeFileList
         }
       }, { headers });
 
       const aiRes = res.data.response;
       
+      // בדיקה אם יש תוכנית עבודה (JSON בתוך [[[ ]]])
       const planMatch = aiRes.match(/\[\[\[(.*?)\]\]\]/s);
       if (planMatch) {
         setPendingPlan(JSON.parse(planMatch[1]));
@@ -78,118 +85,108 @@ const App = () => {
         setMessages(prev => [...prev, { role: 'bot', text: aiRes }]);
       }
     } catch (e) {
-      const errorDetail = e.response?.data?.error || e.message;
-      setMessages(prev => [...prev, { role: 'bot', text: `⚠️ שגיאה: ${errorDetail}` }]);
+      setMessages(prev => [...prev, { role: 'bot', text: `⚠️ שגיאה: ${e.response?.data?.error || e.message}` }]);
     }
     setLoading(false);
   };
-  
+
   const executePlan = async () => {
-    setExecuting(true);
-    setMessages(prev => [...prev, { role: 'bot', text: 'מתחיל בביצוע העדכונים בגיטהאב... 🔨' }]);
+    if (!pendingPlan) return;
+    setLoading(true);
     try {
-      for (const step of pendingPlan) {
-        await axios.post('/api/execute', {
-          owner, repo: selectedRepo, filePath: step.affectedFiles[0], instructions: step.description
-        }, { headers });
-      }
-      await axios.post('/api/repo/finalize', { owner, repo: selectedRepo, prompt: "Chat update" }, { headers });
-      setMessages(prev => [...prev, { role: 'bot', text: '✅ הכל מוכן! הקוד, ה-README והמפה עודכנו.' }]);
+      await axios.post('/api/execute', {
+        plan: pendingPlan,
+        context: { owner, repo: selectedRepo }
+      }, { headers });
+      
+      setMessages(prev => [...prev, { role: 'bot', text: '✅ המשימה בוצעה בהצלחה ודחפתי את השינויים לגיט!' }]);
       setPendingPlan(null);
-      fetchContext();
     } catch (e) {
-      setMessages(prev => [...prev, { role: 'bot', text: '❌ הביצוע נכשל באמצע. בדוק את גיטהאב.' }]);
+      setMessages(prev => [...prev, { role: 'bot', text: `❌ כשל בביצוע: ${e.message}` }]);
     }
-    setExecuting(false);
+    setLoading(false);
   };
 
   return (
-    <div style={containerStyle}>
+    <div style={{ maxWidth: '600px', margin: '0 auto', height: '100vh', display: 'flex', flexDirection: 'column', background: '#f8fafc', fontFamily: 'system-ui' }} dir="rtl">
+      
       {/* Header */}
-      <div style={headerStyle}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-          <BrainCircuit color="#2563eb" size={28} />
-          <h2 style={{ margin: 0 }}>AI Coding Agent</h2>
-        </div>
-        <button onClick={() => setIsSettingsOpen(true)} style={settingsToggleStyle}>
-          <Settings size={20} />
-          {selectedRepo && <span style={repoTag}>{selectedRepo}</span>}
-        </button>
+      <div style={{ padding: '15px', background: '#fff', borderBottom: '1px solid #e2e8f0', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+        <h1 style={{ fontSize: '18px', fontWeight: 'bold', margin: 0 }}>AI Coding Agent 🤖</h1>
+        <Settings onClick={() => setShowSettings(true)} style={{ cursor: 'pointer', color: '#64748b' }} />
       </div>
 
-      {/* Chat Window */}
-      <div style={chatBoxStyle}>
+      {/* Chat Area */}
+      <div style={{ flex: 1, overflowY: 'auto', padding: '20px' }}>
         {messages.map((m, i) => (
-          <div key={i} style={m.role === 'user' ? userRowStyle : botRowStyle}>
-            <div style={m.role === 'user' ? userBubbleStyle : botBubbleStyle}>
-              {m.text}
-              {m.hasPlan && !executing && (
-                <button onClick={executePlan} style={confirmButtonStyle}>
-                  <Rocket size={16} /> אשר ביצוע תוכנית
+          <div key={i} style={{ 
+            display: 'flex', 
+            justifyContent: m.role === 'user' ? 'flex-start' : 'flex-end',
+            marginBottom: '15px' 
+          }}>
+            <div style={{ 
+              maxWidth: '85%', 
+              padding: '12px 16px', 
+              borderRadius: '15px',
+              fontSize: '15px',
+              background: m.role === 'user' ? '#3b82f6' : '#fff',
+              color: m.role === 'user' ? '#fff' : '#1e293b',
+              boxShadow: '0 1px 2px rgba(0,0,0,0.05)',
+              border: m.role === 'user' ? 'none' : '1px solid #e2e8f0'
+            }}>
+              {formatMessage(m.text)}
+              
+              {m.hasPlan && (
+                <button 
+                  onClick={executePlan}
+                  style={{ 
+                    marginTop: '12px', width: '100%', padding: '10px', background: '#10b981', 
+                    color: '#fff', border: 'none', borderRadius: '8px', fontWeight: 'bold', cursor: 'pointer',
+                    display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px'
+                  }}
+                >
+                  <CheckCircle2 size={18} /> אשר ביצוע בגיטהאב
                 </button>
               )}
             </div>
           </div>
         ))}
-        {loading && <div style={botRowStyle}><Loader2 className="animate-spin" size={20} /></div>}
-        <div ref={chatEndRef} />
+        {loading && <div style={{ textAlign: 'center', color: '#94a3b8' }}><Loader2 className="animate-spin" /></div>}
       </div>
 
       {/* Input Area */}
-      <div style={inputContainerStyle}>
+      <div style={{ padding: '20px', background: '#fff', borderTop: '1px solid #e2e8f0', display: 'flex', gap: '10px' }}>
         <input 
           value={inputText}
-          onChange={e => setInputText(e.target.value)}
-          onKeyPress={e => e.key === 'Enter' && sendMessage()}
-          placeholder="כתוב כאן הודעה..."
-          style={inputFieldStyle}
-          disabled={executing}
+          onChange={(e) => setInputText(e.target.value)}
+          onKeyPress={(e) => e.key === 'Enter' && sendMessage()}
+          placeholder="מה תרצה לפתח?"
+          style={{ flex: 1, padding: '12px', borderRadius: '10px', border: '1px solid #e2e8f0', outline: 'none' }}
         />
-        <button onClick={sendMessage} disabled={loading || executing} style={sendButtonStyle}>
+        <button onClick={sendMessage} style={{ background: '#3b82f6', color: '#fff', border: 'none', padding: '10px 15px', borderRadius: '10px' }}>
           <Send size={20} />
         </button>
       </div>
 
-      {/* Settings Modal (אותו לוגיקה כמו קודם) */}
-      {isSettingsOpen && (
-        <div style={modalOverlayStyle}>
-          <div style={modalContentStyle}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '20px' }}>
-              <h3>⚙️ הגדרות</h3>
-              <X onClick={() => setIsSettingsOpen(false)} style={{cursor:'pointer'}} />
-            </div>
-            <input type="password" placeholder="Gemini Key" value={aiKey} onChange={e => setAiKey(e.target.value)} style={modalInputStyle} />
-            <input type="password" placeholder="GitHub Token" value={githubToken} onChange={e => setGithubToken(e.target.value)} style={modalInputStyle} />
-            <select value={selectedRepo} onChange={e => setSelectedRepo(e.target.value)} style={modalInputStyle}>
-               {repos.map(r => <option key={r} value={r}>{r}</option>)}
-            </select>
-            <div style={readmeStyle}>{readme}</div>
-            <button onClick={() => setIsSettingsOpen(false)} style={saveButtonStyle}>שמור וסגור</button>
+      {/* Settings Modal */}
+      {showSettings && (
+        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '20px', zIndex: 100 }}>
+          <div style={{ background: '#fff', padding: '25px', borderRadius: '15px', width: '100%', maxWidth: '400px' }}>
+            <h2 style={{ marginBottom: '15px' }}>הגדרות פרויקט</h2>
+            <input placeholder="Gemini API Key" type="password" value={aiKey} onChange={e => setAiKey(e.target.value)} style={modalInputStyle} />
+            <input placeholder="GitHub Personal Token" type="password" value={githubToken} onChange={e => setGithubToken(e.target.value)} style={modalInputStyle} />
+            <input placeholder="GitHub Owner (username)" value={owner} onChange={e => setOwner(e.target.value)} style={modalInputStyle} />
+            <input placeholder="Repository Name" value={selectedRepo} onChange={e => setSelectedRepo(e.target.value)} style={modalInputStyle} />
+            <button onClick={() => setShowSettings(false)} style={{ width: '100%', padding: '12px', background: '#3b82f6', color: '#fff', border: 'none', borderRadius: '10px', fontWeight: 'bold' }}>שמור וסגור</button>
           </div>
         </div>
       )}
     </div>
   );
-};
+}
 
-// --- Styles ---
-const containerStyle = { height: '100vh', display: 'flex', flexDirection: 'column', direction: 'rtl', fontFamily: 'system-ui', backgroundColor: '#f9fafb' };
-const headerStyle = { padding: '15px 20px', background: 'white', borderBottom: '1px solid #e5e7eb', display: 'flex', justifyContent: 'space-between', alignItems: 'center' };
-const chatBoxStyle = { flex: 1, overflowY: 'auto', padding: '20px', display: 'flex', flexDirection: 'column', gap: '15px' };
-const userRowStyle = { display: 'flex', justifyContent: 'flex-start' };
-const botRowStyle = { display: 'flex', justifyContent: 'flex-end' };
-const userBubbleStyle = { background: '#2563eb', color: 'white', padding: '12px 18px', borderRadius: '18px 18px 0 18px', maxWidth: '80%', boxShadow: '0 2px 4px rgba(0,0,0,0.1)' };
-const botBubbleStyle = { background: 'white', color: '#1f2937', padding: '12px 18px', borderRadius: '18px 18px 18px 0', maxWidth: '80%', border: '1px solid #e5e7eb', boxShadow: '0 2px 4px rgba(0,0,0,0.05)' };
-const inputContainerStyle = { padding: '15px', background: 'white', borderTop: '1px solid #e5e7eb', display: 'flex', gap: '10px' };
-const inputFieldStyle = { flex: 1, padding: '12px', borderRadius: '25px', border: '1px solid #e5e7eb', outline: 'none', fontSize: '16px' };
-const sendButtonStyle = { background: '#2563eb', color: 'white', border: 'none', width: '45px', height: '45px', borderRadius: '50%', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' };
-const confirmButtonStyle = { marginTop: '10px', width: '100%', padding: '8px', background: '#10b981', color: 'white', border: 'none', borderRadius: '8px', cursor: 'pointer', fontWeight: 'bold', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '5px' };
-const settingsToggleStyle = { background: '#f3f4f6', border: 'none', padding: '8px 12px', borderRadius: '10px', display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer' };
-const repoTag = { fontSize: '12px', fontWeight: 'bold', color: '#2563eb' };
-const modalOverlayStyle = { position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(0,0,0,0.5)', zIndex: 1000, display: 'flex', alignItems: 'center', justifyContent: 'center' };
-const modalContentStyle = { background: 'white', padding: '25px', borderRadius: '20px', width: '90%', maxWidth: '450px' };
-const modalInputStyle = { width: '100%', padding: '10px', marginBottom: '10px', borderRadius: '8px', border: '1px solid #ddd', boxSizing: 'border-box' };
-const saveButtonStyle = { width: '100%', padding: '12px', background: '#1f2937', color: 'white', border: 'none', borderRadius: '10px', cursor: 'pointer' };
-const readmeStyle = { maxHeight: '150px', overflowY: 'auto', background: '#f8fafc', padding: '10px', fontSize: '12px', direction: 'ltr', textAlign: 'left', marginBottom: '10px', border: '1px solid #eee' };
+const modalInputStyle = {
+  width: '100%', padding: '10px', marginBottom: '10px', borderRadius: '8px', border: '1px solid #e2e8f0', boxSizing: 'border-box'
+};
 
 export default App;
