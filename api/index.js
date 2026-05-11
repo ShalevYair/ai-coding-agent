@@ -51,26 +51,31 @@ app.post('/api/chat', async (req, res) => {
     const { ai, github } = getServices(req);
     const { prompt, history, context } = req.body;
 
-    // 1. הבאת כל הקבצים
-    const allFiles = await github.getAiMap(context.owner, context.repo);
+    // הגנה: אם אין owner או repo, נחזיר שגיאה ברורה
+    if (!context.owner || !context.repo) {
+      return res.json({ response: "חובה לבחור פרויקט (Repository) בהגדרות לפני שמתחילים." });
+    }
+
+    // הבאת הקבצים
+    let allFiles = await github.getAiMap(context.owner, context.repo);
     
-    // 2. סינון קריטי: מוריד את תיקיית .git וקבצי מערכת טכניים
-    const filteredFiles = allFiles.filter(f => 
-      !f.includes('.git/') && 
-      !['HEAD', 'config', 'description', 'index'].includes(f)
-    );
+    // בדיקה שקיבלנו מערך (Array) לפני הסינון
+    const filteredFiles = Array.isArray(allFiles) 
+      ? allFiles.filter(f => !f.includes('.git/') && !['HEAD', 'config', 'description'].includes(f))
+      : [];
     
     const updatedContext = {
       ...context,
       projectMap: {
         ...(context.projectMap || {}),
-        realTimeFileList: filteredFiles // שולח רק את הקבצים האמיתיים של הקוד
+        realTimeFileList: filteredFiles
       }
     };
 
     const response = await ai.chat(prompt, history, updatedContext);
     res.json({ response });
   } catch (e) {
+    console.error("Chat Error:", e);
     res.status(500).json({ error: `AI Error: ${e.message}` });
   }
 });
