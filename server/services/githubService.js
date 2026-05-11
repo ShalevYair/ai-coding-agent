@@ -1,4 +1,3 @@
-// server/services/githubService.js
 const { Octokit } = require("@octokit/rest");
 
 class GitHubService {
@@ -6,23 +5,23 @@ class GitHubService {
     this.octokit = new Octokit({ auth: token });
   }
 
-  // שליפת תוכן קובץ
+  // שליפת תוכן קובץ (חיוני לעריכה)
   async getFile(owner, repo, path) {
     try {
       const { data } = await this.octokit.rest.repos.getContent({ owner, repo, path });
       return Buffer.from(data.content, 'base64').toString();
     } catch (e) { 
-      return ""; 
+      return ""; // קובץ חדש
     }
   }
 
-  // תיקון השם ל-updateFile כדי שיתאים לקריאה ב-api/index.js
+  // הפונקציה ש-index.js מחפש. כוללת טיפול ב-SHA (חובה לעדכון)
   async updateFile(owner, repo, path, content, message) {
     let sha;
     try {
       const { data } = await this.octokit.rest.repos.getContent({ owner, repo, path });
       sha = data.sha;
-    } catch (e) { /* קובץ חדש - אין SHA */ }
+    } catch (e) { /* קובץ חדש, אין SHA */ }
 
     return this.octokit.rest.repos.createOrUpdateFileContents({
       owner,
@@ -35,7 +34,7 @@ class GitHubService {
     });
   }
 
-  // שליפת עץ הקבצים המלא (Recursive)
+  // סריקה רקוסיבית של כל התיקיות
   async getAiMap(owner, repo) {
     try {
       const { data } = await this.octokit.rest.git.getTree({
@@ -44,14 +43,10 @@ class GitHubService {
         tree_sha: 'main', 
         recursive: true
       });
-
-      // מחזיר מערך פשוט של נתיבים (Strings)
-      return data.tree
-        .filter(item => item.type === 'blob')
-        .map(item => item.path);
+      return data.tree.filter(f => f.type === 'blob').map(f => f.path);
     } catch (e) {
-      console.error("GitHub Tree Error:", e.message);
-      return []; 
+      console.error("Tree Error:", e.message);
+      return [];
     }
   }
 }
