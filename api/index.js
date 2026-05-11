@@ -87,7 +87,14 @@ app.post('/api/execute', async (req, res) => {
     const { plan, context } = req.body;
 
     for (const file of plan[0].affectedFiles) {
-      const currentContent = await github.getFile(context.owner, context.repo, file);
+      let currentContent = "";
+      try {
+        // מנסה להביא תוכן קיים. אם נכשל (קובץ חדש) - נשאר עם מחרוזת ריקה
+        currentContent = await github.getFile(context.owner, context.repo, file);
+      } catch (e) {
+        console.log(`Creating new file: ${file}`);
+      }
+
       const newContent = await ai.editCode(currentContent, plan[0].description);
       await github.updateFile(context.owner, context.repo, file, newContent, plan[0].description);
     }
