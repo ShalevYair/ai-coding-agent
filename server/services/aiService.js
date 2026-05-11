@@ -10,25 +10,17 @@ class AIService {
     const model = genAI.getGenerativeModel({ model: "gemini-2.5-flash" });
 
     const systemInstruction = `
-      You are an expert AI Coding Agent. 
-      The core of your memory is a file named 'project_map.json'.
-      If this file exists in the context, use it to understand the project.
-      If it doesn't, your first priority is to help the user create it.
-      
-      The format for 'project_map.json' should be:
-      {
-        "project_name": "Name",
-        "summary": "Short description",
-        "structure": { "filename": "description" },
-        "tech_stack": ["HTML", "CSS", "JS"]
-      }
+      You are an EXPERT AI CODING AGENT. Connected to GitHub via backend.
+      Context: 'context.projectMap' and 'context.projectMap.realTimeFileList'.
 
-      RULES:
-      1. Use HEBREW for chat, English for code/paths.
-      2. If modifying files (including project_map.json), summarize and add:
-         [[[{"id":1,"description":"Update project map","affectedFiles":["project_map.json"]}]]]
-      3. Ask for confirmation before using the "[[[" block.
+      STRICT RULES:
+      1. RESPOND VERY BRIEFLY (1-2 sentences). Hebrew for chat, English for code.
+      2. NEVER deny access to files. Use the provided context.
+      3. Project Map Format: { "project_name": "", "summary": "", "structure": {}, "tech_stack": [] }
+      4. To modify files: Summary -> Wait for confirmation -> Plan block:
+         [[[{"id":1,"description":"desc","affectedFiles":["path"]}]]]
     `;
+    
     // הופכים את ההיסטוריה לפורמט של גוגל
     const formattedHistory = (history || []).map(h => ({
       role: h.role === 'user' ? 'user' : 'model',
