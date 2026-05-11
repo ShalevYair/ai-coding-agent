@@ -2,54 +2,90 @@ const { GoogleGenerativeAI } = require("@google/generative-ai");
 
 class AIService {
   constructor(provider, apiKey) {
-    this.apiKey = apiKey;
+    this.genAI = new GoogleGenerativeAI(apiKey);
+    // משתמשים במודל Gemini 1.5 Flash - מהיר ומצוין למשימות קוד
+    this.model = this.genAI.getGenerativeModel({ 
+      model: "gemini-1.5-flash" 
+    });
   }
 
   async chat(prompt, history, context) {
-    const genAI = new GoogleGenerativeAI(this.apiKey);
-    const model = genAI.getGenerativeModel({ model: "gemini-2.5-flash" });
+    try {
+      // 1. חילוץ רשימת הקבצים והפיכתה לטקסט קריא עבור ה-AI
+      const files = context?.projectMap?.realTimeFileList || [];
+      const fileListString = files.length > 0 ? files.join(', ') : "התיקייה ריקה כרגע.";
 
-    const systemInstruction = `
-      You are an AUTHORITATIVE AI CODING AGENT. 
-      Your mission is to manage, develop, and update the GitHub repository for the user.
-    
-      CORE CAPABILITIES:
-      1. You analyze the project structure using 'realTimeFileList'.
-      2. You read, explain, and modify files based on user requests.
-      3. If 'project_map.json' or 'README.md' are missing from the list, your first priority is to ask the user if you should create them based on the current structure.
-      4. You are the architect: Always provide truthful answers based on the files you see.
-    
-      COMMUNICATION RULES:
-      - Respond very briefly (1-2 sentences) in Hebrew.
-      - Keep code/paths in English.
-      - When a change is needed, immediately propose a plan using:
-        [[[{"id":1,"description":"Brief task description","affectedFiles":["path/to/file"]}]]]
-    `;
-    
-    // הופכים את ההיסטוריה לפורמט של גוגל
-    const formattedHistory = (history || []).map(h => ({
-      role: h.role === 'user' ? 'user' : 'model',
-      parts: [{ text: h.text }],
-    }));
+      // 2. הגדרת זהות הסוכן (System Instruction)
+      const systemInstruction = `
+        You are an AUTHORITATIVE AI CODING AGENT. 
+        Your mission is to manage, develop, and update the GitHub repository for the user.
 
-    // התיקון הקריטי: גוגל דורש שההודעה הראשונה תהיה של המשתמש (user)
-    const firstUserIndex = formattedHistory.findIndex(h => h.role === 'user');
-    const cleanHistory = firstUserIndex > -1 ? formattedHistory.slice(firstUserIndex) : [];
+        CORE RULES:
+        1. Always speak the truth based ONLY on the provided file list.
+        2. If 'project_map.json' or 'README.md' are missing, your priority is to suggest creating them.
+        3. Respond VERY BRIEFLY in Hebrew (1-2 sentences). Code stays in English.
+        4. If you don't know something or the list is empty, say it clearly.
+        5. To create or modify files, you MUST provide a plan in this exact format:
+           [[[{"id":1,"description":"Brief task description","affectedFiles":["path/to/file"]}]]]
+      `;
 
-    const chat = model.startChat({
-      history: cleanHistory,
-    });
+      // 3. הזרקת הקונטקסט (רשימת הקבצים) ישירות לתוך הפרומפט של המשתמש
+      // זה מבטיח שה-AI "רואה" את הקבצים בכל הודעה מחדש
+      const contextualizedPrompt = `
+        CURRENT REPOSITORY FILES: ${fileListString}
+        USER MESSAGE: ${prompt}
+      `;
 
-    const result = await chat.sendMessage(systemInstruction + "\nUser Input: " + prompt);
-    return result.response.text();
+      // 4. הכנת ההיסטוריה לפורמט של Google Gemini
+      // ה-history מגיע מה-Frontend כמערך של {role, text}
+      const contents = history.map(msg => ({
+        role: msg.role === 'user' ? 'user' : 'model',
+        parts: [{ text: msg.text }]
+      }));
+
+      // הוספת ההודעה הנוכחית עם הקונטקסט
+      contents.push({
+        role: 'user',
+        parts: [{ text: contextualizedPrompt }]
+      });
+
+      // 5. קריאה ל-API
+      const result = await this.model.generateContent({
+        contents: contents,
+        systemInstruction: systemInstruction,
+        generationConfig: {
+          temperature: 0.2, // טמפרטורה נמוכה כדי למנוע הזיות
+        }
+      });
+
+      const response = await result.response;
+      return response.text();
+    } catch (e) {
+      console.error("AI Service Error:", e);
+      throw new Error(`AI Service failed: ${e.message}`);
+    }
   }
 
-  async editCode(currentCode, instructions) {
-    const genAI = new GoogleGenerativeAI(this.apiKey);
-    const model = genAI.getGenerativeModel({ model: "gemini-2.5-flash" });
-    const prompt = `Current Code:\n${currentCode}\n\nTask: ${instructions}\n\nReturn ONLY the new full code. No markdown.`;
-    const result = await model.generateContent(prompt);
-    return result.response.text().replace(/```[a-z]*|```/g, "").trim();
+  // פונקציה לעריכת קוד (משמשת ב-execute)
+  async editCode(currentContent, taskDescription) {
+    try {
+      const prompt = `
+        TASK: ${taskDescription}
+        EXISTING CODE:
+        ${currentContent || "// New file - no existing content"}
+        
+        INSTRUCTION:
+        Apply the changes requested. Return ONLY the full updated code. 
+        No explanations, no markdown blocks. Just pure code.
+      `;
+
+      const result = await this.model.generateContent(prompt);
+      const response = await result.response;
+      // ניקוי תגיות markdown אם ה-AI בטעות הוסיף אותן
+      return response.text().replace(/```[a-z]*\n?|```/g, '').trim();
+    } catch (e) {
+      throw new Error(`Code editing failed: ${e.message}`);
+    }
   }
 }
 
