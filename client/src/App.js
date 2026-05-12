@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import axios from 'axios';
 import { Settings, Send, Loader2, CheckCircle2, X } from 'lucide-react';
 
-// פונקציה שמסדרת את התצוגה: עברית בימין, קוד (```) בשמאל עם רקע כהה
+// פונקציה שמסדרת את הטקסט: עברית בימין, קוד בשמאל עם רקע כהה
 const formatMessage = (text) => {
   if (!text) return null;
   const parts = text.split(/(```[\s\S]*?```)/g);
@@ -32,27 +32,22 @@ function App() {
   const [showSettings, setShowSettings] = useState(false);
   const [pendingPlan, setPendingPlan] = useState(null);
   
-  // טעינה מהזיכרון של הדפדפן
   const [aiKey, setAiKey] = useState(localStorage.getItem('ai_key') || '');
   const [githubToken, setGithubToken] = useState(localStorage.getItem('gh_token') || '');
   const [owner, setOwner] = useState(localStorage.getItem('owner') || '');
   const [selectedRepo, setSelectedRepo] = useState(localStorage.getItem('selected_repo') || '');
   const [repoList, setRepoList] = useState([]);
 
-  // שמירה אוטומטית וטעינת נתונים מגיט
   useEffect(() => {
     localStorage.setItem('ai_key', aiKey);
     localStorage.setItem('gh_token', githubToken);
     localStorage.setItem('owner', owner);
     localStorage.setItem('selected_repo', selectedRepo);
-
-    // אם יש טוקן ועדיין לא טענו רשימת פרויקטים - טען אוטומטית
     if (githubToken && githubToken.length > 20 && repoList.length === 0) {
       fetchGitHubData();
     }
   }, [aiKey, githubToken, owner, selectedRepo, repoList.length]);
 
-  // פתיחת הגדרות אוטומטית אם חסר משהו
   useEffect(() => {
     if (!aiKey || !githubToken || !selectedRepo) {
       setShowSettings(true);
@@ -66,7 +61,6 @@ function App() {
       });
       setOwner(res.data.username);
       setRepoList(res.data.repos);
-      // אם לא נבחר רפו, קח את הראשון ברשימה כברירת מחדל
       if (!selectedRepo && res.data.repos.length > 0) {
         setSelectedRepo(res.data.repos[0]);
       }
@@ -95,35 +89,23 @@ function App() {
       if (planMatch) {
         try {
           let planData = JSON.parse(planMatch[1]);
-          
-          // התיקון הקריטי: אם ה-AI שלח אובייקט בודד, אנחנו הופכים אותו למערך []
-          // כדי שהשרת לא יזרוק שגיאת 400
           const finalPlan = Array.isArray(planData) ? planData : [planData];
-          
           setPendingPlan(finalPlan);
-          
           const cleanText = aiRes.replace(/\[\[\[.*?\]\]\]/s, '').trim();
-          setMessages(prev => [...prev, { 
-            role: 'bot', 
-            text: cleanText, 
-            hasPlan: true, 
-            plan: finalPlan // זה מה ששומר את רשימת הקבצים
-          }]);
           
-        } catch (parseError) {
-          console.error("JSON Parse Error:", parseError);
+          setMessages(prev => [...prev, { 
+            role: 'bot', text: cleanText, hasPlan: true, plan: finalPlan 
+          }]);
+        } catch (e) {
           setMessages(prev => [...prev, { role: 'bot', text: aiRes }]);
         }
       } else {
         setMessages(prev => [...prev, { role: 'bot', text: aiRes }]);
       }
-      
     } catch (e) {
-      // מציג את השגיאה המפורטת מה-Backend (למשל: "ה-Plan אינו מערך")
       const errorMsg = e.response?.data?.error || e.message;
-      setMessages(prev => [...prev, { role: 'bot', text: `❌ שגיאה בביצוע: ${errorMsg}` }]);
+      setMessages(prev => [...prev, { role: 'bot', text: `❌ שגיאה: ${errorMsg}` }]);
     }
-    
     setLoading(false);
   };
 
@@ -135,7 +117,6 @@ function App() {
         plan: pendingPlan,
         context: { owner, repo: selectedRepo }
       }, { headers: { 'x-ai-key': aiKey, 'x-github-token': githubToken } });
-      
       setMessages(prev => [...prev, { role: 'bot', text: '✅ בוצע! השינויים נדחפו לגיטהאב.' }]);
       setPendingPlan(null);
     } catch (e) {
@@ -170,14 +151,13 @@ function App() {
               {m.role === 'bot' && <span style={{ marginLeft: '8px' }}>🤖</span>}
               {formatMessage(m.text)}
 
-              {/* כאן אנחנו מציגים את התוכנית אם היא קיימת */}
               {m.hasPlan && m.plan && (
                 <div style={{ marginTop: '12px', borderTop: '1px solid #cbd5e1', paddingTop: '10px' }}>
                   <div style={{ fontSize: '12px', fontWeight: 'bold', marginBottom: '8px' }}>📁 קבצים לשינוי:</div>
                   <ul style={{ fontSize: '12px', margin: '0 0 12px 0', paddingRight: '20px', listStyleType: 'disc' }}>
                     {m.plan.map((file, idx) => (
                       <li key={idx}>
-                        <code style={{ background: '#f8fafc', padding: '2px 4px' }}>{file.path}</code> 
+                        <code style={{ background: '#f8fafc', padding: '2px 4px', borderRadius: '4px' }}>{file.path}</code> 
                         <span style={{ fontSize: '10px', color: '#64748b', marginRight: '5px' }}>({file.action})</span>
                       </li>
                     ))}
@@ -195,21 +175,6 @@ function App() {
           </div>
         ))}
 
-        {loading && (
-          <div style={{ display: 'flex', justifyContent: 'flex-start', marginBottom: '15px' }}>
-            <div style={{ 
-              padding: '12px 16px', borderRadius: '15px', background: '#e2e8f0', 
-              color: '#1e293b', border: '1px solid #cbd5e1', display: 'flex', alignItems: 'center', gap: '8px' 
-            }}>
-              <span>🤖</span>
-              <Loader2 className="animate-spin" size={16} />
-              <span style={{ fontSize: '14px' }}>חושב...</span>
-            </div>
-          </div>
-        )}
-      </div>
-
-        {/* בועת טעינה כשהבוט חושב */}
         {loading && (
           <div style={{ display: 'flex', justifyContent: 'flex-start', marginBottom: '15px' }}>
             <div style={{ 
@@ -244,21 +209,16 @@ function App() {
           <div style={{ background: '#fff', padding: '25px', borderRadius: '20px', width: '100%', maxWidth: '400px', position: 'relative', boxShadow: '0 20px 25px -5px rgba(0,0,0,0.1)' }}>
             <X onClick={() => setShowSettings(false)} style={{ position: 'absolute', left: '15px', top: '15px', cursor: 'pointer', color: '#94a3b8' }} size={24} />
             <h2 style={{ marginTop: 0, fontSize: '18px', marginBottom: '20px' }}>הגדרות חיבור</h2>
-            
             <label style={labelStyle}>Gemini API Key</label>
             <input type="password" value={aiKey} onChange={e => setAiKey(e.target.value)} style={modalInputStyle} placeholder="הדבק מפתח גמיני..." />
-            
             <label style={labelStyle}>GitHub Token</label>
             <input type="password" value={githubToken} onChange={e => setGithubToken(e.target.value)} style={modalInputStyle} placeholder="הדבק טוקן גיטהאב..." />
-
             {owner && <div style={{ fontSize: '13px', marginBottom: '15px', color: '#10b981', fontWeight: '600' }}>✅ מחובר כ: {owner}</div>}
-
             <label style={labelStyle}>בחר פרויקט פעיל</label>
             <select value={selectedRepo} onChange={e => setSelectedRepo(e.target.value)} style={modalInputStyle}>
               {repoList.length === 0 && <option>ממתין לטוקן...</option>}
               {repoList.map(r => <option key={r} value={r}>{r}</option>)}
             </select>
-
             <button onClick={() => setShowSettings(false)} style={{ width: '100%', padding: '14px', background: '#3b82f6', color: '#fff', border: 'none', borderRadius: '12px', fontWeight: 'bold', cursor: 'pointer', fontSize: '16px' }}>שמור וצא</button>
           </div>
         </div>
