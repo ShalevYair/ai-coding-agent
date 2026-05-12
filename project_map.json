@@ -12,7 +12,8 @@
   "structure": {
     "root": {
       ".gitignore": "הגדרת קבצים שאינם מסונכרנים לגיט (כמו node_modules).",
-      "README.md": "תיעוד הפרויקט הראשי.",
+      "Gemini.md": "תיעוד הפרויקט הראשי.",
+      "README.md": "תיעוד הפרויקט למשתמש בקצה.",
       "package.json": "ניהול תלויות והרצה עבור ה-Root.",
       "package-lock.json": "גרסאות נעולות של חבילות ה-Root.",
       "vercel.json": "הגדרות פריסה ל-Vercel (Routing ו-Serverless).",
