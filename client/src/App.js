@@ -153,15 +153,19 @@ function App() {
       {/* Chat Area */}
       <div style={{ flex: 1, overflowY: 'auto', padding: '20px' }}>
         {messages.map((m, i) => (
-          <div key={i} style={{ display: 'flex', justifyContent: m.role === 'user' ? 'flex-start' : 'flex-end', marginBottom: '15px' }}>
+          <div key={i} style={{ display: 'flex', justifyContent: 'flex-start', marginBottom: '15px' }}>
             <div style={{ 
               maxWidth: '90%', padding: '12px 16px', borderRadius: '15px',
-              background: m.role === 'user' ? '#3b82f6' : '#fff',
+              background: m.role === 'user' ? '#3b82f6' : '#e2e8f0', 
               color: m.role === 'user' ? '#fff' : '#1e293b',
               boxShadow: '0 1px 2px rgba(0,0,0,0.05)',
-              border: m.role === 'user' ? 'none' : '1px solid #e2e8f0'
+              border: m.role === 'user' ? 'none' : '1px solid #cbd5e1'
             }}>
+              {/* סמליל רובוט רק להודעות בוט */}
+              {m.role === 'bot' && <span style={{ marginLeft: '8px' }}>🤖</span>}
+              
               {formatMessage(m.text)}
+
               {m.hasPlan && (
                 <button onClick={executePlan} style={{ marginTop: '12px', width: '100%', padding: '10px', background: '#10b981', color: '#fff', border: 'none', borderRadius: '8px', fontWeight: 'bold', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px' }}>
                   <CheckCircle2 size={18} /> אשר ביצוע בגיט
@@ -170,7 +174,20 @@ function App() {
             </div>
           </div>
         ))}
-        {loading && <Loader2 className="animate-spin" style={{ margin: '10px auto', display: 'block', color: '#3b82f6' }} />}
+
+        {/* בועת טעינה כשהבוט חושב */}
+        {loading && (
+          <div style={{ display: 'flex', justifyContent: 'flex-start', marginBottom: '15px' }}>
+            <div style={{ 
+              padding: '12px 16px', borderRadius: '15px', background: '#e2e8f0', 
+              color: '#1e293b', border: '1px solid #cbd5e1', display: 'flex', alignItems: 'center', gap: '8px' 
+            }}>
+              <span>🤖</span>
+              <Loader2 className="animate-spin" size={16} />
+              <span style={{ fontSize: '14px' }}>חושב...</span>
+            </div>
+          </div>
+        )}
       </div>
 
       {/* Input */}
