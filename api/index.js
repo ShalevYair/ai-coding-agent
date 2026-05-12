@@ -48,7 +48,7 @@ app.post('/api/chat', async (req, res) => {
     
     // 2. קריאה אוטומטית של "קבצי זיכרון" (הסוכן תמיד יראה אותם)
     let coreContent = "";
-    const coreFiles = ['README.md', 'project_map.json'];
+    const coreFiles = ['Gemini.md', 'project_map.json'];
     
     for (const file of coreFiles) {
       if (allFiles.includes(file)) {
