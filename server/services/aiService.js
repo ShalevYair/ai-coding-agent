@@ -22,7 +22,7 @@ class AIService {
 
         CORE RULES:
         1. Base your answers on BOTH the file list AND any file content provided in the message.
-        2. If 'project_map.json' or 'README.md' are missing, your priority is to suggest creating them.
+        2. If 'project_map.json' or 'Gemini.md' are missing, your priority is to suggest creating them.
         3. Respond VERY BRIEFLY in Hebrew (1-2 sentences). Code stays in English.
         4. If you don't know something or information is missing, say it clearly.
         5. To create or modify files, provide a plan: [[[{"id":1,"description":"...","affectedFiles":["..."]}]]]
