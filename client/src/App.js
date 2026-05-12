@@ -103,7 +103,13 @@ function App() {
           setPendingPlan(finalPlan);
           
           const cleanText = aiRes.replace(/\[\[\[.*?\]\]\]/s, '').trim();
-          setMessages(prev => [...prev, { role: 'bot', text: cleanText, hasPlan: true }]);
+          setMessages(prev => [...prev, { 
+            role: 'bot', 
+            text: cleanText, 
+            hasPlan: true, 
+            plan: finalPlan // זה מה ששומר את רשימת הקבצים
+          }]);
+          
         } catch (parseError) {
           console.error("JSON Parse Error:", parseError);
           setMessages(prev => [...prev, { role: 'bot', text: aiRes }]);
@@ -161,19 +167,47 @@ function App() {
               boxShadow: '0 1px 2px rgba(0,0,0,0.05)',
               border: m.role === 'user' ? 'none' : '1px solid #cbd5e1'
             }}>
-              {/* סמליל רובוט רק להודעות בוט */}
               {m.role === 'bot' && <span style={{ marginLeft: '8px' }}>🤖</span>}
-              
               {formatMessage(m.text)}
 
-              {m.hasPlan && (
-                <button onClick={executePlan} style={{ marginTop: '12px', width: '100%', padding: '10px', background: '#10b981', color: '#fff', border: 'none', borderRadius: '8px', fontWeight: 'bold', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px' }}>
-                  <CheckCircle2 size={18} /> אשר ביצוע בגיט
-                </button>
+              {/* כאן אנחנו מציגים את התוכנית אם היא קיימת */}
+              {m.hasPlan && m.plan && (
+                <div style={{ marginTop: '12px', borderTop: '1px solid #cbd5e1', paddingTop: '10px' }}>
+                  <div style={{ fontSize: '12px', fontWeight: 'bold', marginBottom: '8px' }}>📁 קבצים לשינוי:</div>
+                  <ul style={{ fontSize: '12px', margin: '0 0 12px 0', paddingRight: '20px', listStyleType: 'disc' }}>
+                    {m.plan.map((file, idx) => (
+                      <li key={idx}>
+                        <code style={{ background: '#f8fafc', padding: '2px 4px' }}>{file.path}</code> 
+                        <span style={{ fontSize: '10px', color: '#64748b', marginRight: '5px' }}>({file.action})</span>
+                      </li>
+                    ))}
+                  </ul>
+                  <button onClick={executePlan} style={{ 
+                    width: '100%', padding: '10px', background: '#10b981', color: '#fff', 
+                    border: 'none', borderRadius: '8px', fontWeight: 'bold', cursor: 'pointer', 
+                    display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px' 
+                  }}>
+                    <CheckCircle2 size={18} /> אשר ביצוע בגיט
+                  </button>
+                </div>
               )}
             </div>
           </div>
         ))}
+
+        {loading && (
+          <div style={{ display: 'flex', justifyContent: 'flex-start', marginBottom: '15px' }}>
+            <div style={{ 
+              padding: '12px 16px', borderRadius: '15px', background: '#e2e8f0', 
+              color: '#1e293b', border: '1px solid #cbd5e1', display: 'flex', alignItems: 'center', gap: '8px' 
+            }}>
+              <span>🤖</span>
+              <Loader2 className="animate-spin" size={16} />
+              <span style={{ fontSize: '14px' }}>חושב...</span>
+            </div>
+          </div>
+        )}
+      </div>
 
         {/* בועת טעינה כשהבוט חושב */}
         {loading && (
