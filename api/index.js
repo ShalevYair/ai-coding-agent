@@ -1,12 +1,31 @@
 const express = require('express');
 const cors = require('cors');
+const rateLimit = require('express-rate-limit');
 const { Octokit } = require("@octokit/rest");
 const GitHubService = require('../server/services/githubService');
 const AIService = require('../server/services/aiService');
 
 const app = express();
 app.use(cors());
-app.use(express.json());
+// Limit request body to 200kb — prevents sending huge payloads
+app.use(express.json({ limit: '200kb' }));
+
+// Rate limiters (in-memory — effective on warm serverless instances)
+const chatLimiter = rateLimit({
+  windowMs: 60 * 1000,   // 1 minute window
+  max: 30,               // 30 chat messages per minute per IP
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { error: 'יותר מדי בקשות. נסה שוב בעוד דקה.' }
+});
+
+const executeLimiter = rateLimit({
+  windowMs: 60 * 1000,  // 1 minute window
+  max: 10,              // 10 executions per minute per IP
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { error: 'יותר מדי ביצועים. נסה שוב בעוד דקה.' }
+});
 
 const getServices = (req) => {
   const aiKey = req.headers['x-ai-key'];
@@ -30,6 +49,20 @@ function flattenOldStructure(node, prefix = '') {
     }
   }
   return result;
+}
+
+// Compress history before sending to AI:
+// - Strips executed plan blocks [[[...]]] to avoid confusing the model
+// - Truncates long messages (code dumps, etc.) to cap token usage
+// - Keeps last 8 messages
+function compressHistory(history) {
+  return (history || [])
+    .slice(-8)
+    .map(msg => {
+      let text = (msg.text || '').replace(/\[\[\[[\s\S]*?\]\]\]/g, '[תוכנית בוצעה]');
+      if (text.length > 800) text = text.substring(0, 800) + '… [קוצר]';
+      return { ...msg, text };
+    });
 }
 
 const SKIP_FILES = new Set([
@@ -123,12 +156,18 @@ app.get('/api/file', async (req, res) => {
   }
 });
 
-app.post('/api/chat', async (req, res) => {
+app.post('/api/chat', chatLimiter, async (req, res) => {
   try {
     const { ai, github } = getServices(req);
-    const { prompt, history, context, responseLength } = req.body;
+    const { prompt, history, context, responseLength, contextFiles } = req.body;
 
-    if (!context.owner || !context.repo) {
+    if (!prompt || typeof prompt !== 'string') {
+      return res.status(400).json({ error: 'שדה prompt חסר או לא תקין.' });
+    }
+    if (prompt.length > 8000) {
+      return res.status(400).json({ error: 'ההודעה ארוכה מדי (מקסימום 8000 תווים).' });
+    }
+    if (!context?.owner || !context?.repo) {
       return res.json({ response: "חובה לבחור פרויקט בהגדרות." });
     }
 
@@ -165,15 +204,29 @@ app.post('/api/chat', async (req, res) => {
       }
     }
 
+    // Fetch explicitly pinned context files (user selected from project map)
+    let pinnedContent = "";
+    if (Array.isArray(contextFiles) && contextFiles.length > 0) {
+      for (const filePath of contextFiles) {
+        if (!coreFiles.includes(filePath) && !dynamicContent.includes(`Content of ${filePath}`)) {
+          try {
+            const content = await github.getFile(context.owner, context.repo, filePath);
+            pinnedContent += `\n--- Content of ${filePath} (pinned by user) ---\n${content}\n`;
+          } catch (e) {}
+        }
+      }
+    }
+
     const enrichedPrompt = `
 ${coreContent}
+${pinnedContent}
 ${dynamicContent}
 
 USER MESSAGE: ${prompt}
     `.trim();
 
     const updatedContext = { ...context, realTimeFileList: allFiles };
-    const response = await ai.chat(enrichedPrompt, history.slice(-10), updatedContext, responseLength || 'short');
+    const response = await ai.chat(enrichedPrompt, compressHistory(history), updatedContext, responseLength || 'short');
     res.json({ response });
   } catch (e) {
     console.error("Chat Error:", e.message);
@@ -181,13 +234,19 @@ USER MESSAGE: ${prompt}
   }
 });
 
-app.post('/api/execute', async (req, res) => {
+app.post('/api/execute', executeLimiter, async (req, res) => {
   try {
     const { github, ai } = getServices(req);
     const { plan, context } = req.body;
 
     if (!plan || !Array.isArray(plan)) {
       return res.status(400).json({ error: "ה-Plan שהתקבל אינו תקין" });
+    }
+    if (plan.length > 20) {
+      return res.status(400).json({ error: "תוכנית גדולה מדי (מקסימום 20 פעולות)." });
+    }
+    if (!context?.owner || !context?.repo) {
+      return res.status(400).json({ error: "חסר owner או repo בקונטקסט." });
     }
 
     for (const action of plan) {
@@ -210,6 +269,31 @@ app.post('/api/execute', async (req, res) => {
     res.json({ success: true });
   } catch (e) {
     console.error("Execution Error:", e.message);
+    res.status(500).json({ error: e.message });
+  }
+});
+
+// Preview: generate proposed content without committing to GitHub
+app.post('/api/preview', executeLimiter, async (req, res) => {
+  try {
+    const { github, ai } = getServices(req);
+    const { plan, context } = req.body;
+
+    if (!plan || !Array.isArray(plan) || !context?.owner || !context?.repo) {
+      return res.status(400).json({ error: 'פרמטרים חסרים.' });
+    }
+
+    const previews = [];
+    for (const action of plan) {
+      for (const file of action.affectedFiles) {
+        const current = await github.getFile(context.owner, context.repo, file);
+        const proposed = await ai.editCode(current, action.description);
+        previews.push({ file, current, proposed, description: action.description });
+      }
+    }
+    res.json({ previews });
+  } catch (e) {
+    console.error("Preview Error:", e.message);
     res.status(500).json({ error: e.message });
   }
 });
