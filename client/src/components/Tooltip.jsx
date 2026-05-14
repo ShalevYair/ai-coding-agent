@@ -11,7 +11,7 @@ export function Tooltip({ text, children }) {
       {children}
       {visible && (
         <span style={{
-          position: 'absolute', bottom: '115%', left: '50%',
+          position: 'absolute', top: 'calc(100% + 6px)', left: '50%',
           transform: 'translateX(-50%)',
           background: '#1e293b', color: '#f8fafc',
           padding: '3px 8px', borderRadius: '5px',

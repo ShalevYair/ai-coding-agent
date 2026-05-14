@@ -3,6 +3,7 @@ import axios from 'axios';
 
 import { useChat } from './hooks/useChat';
 import { useProjectData } from './hooks/useProjectData';
+import { useSavedChats } from './hooks/useSavedChats';
 
 import { Header } from './components/Header';
 import { ChatWindow } from './components/ChatWindow';
@@ -11,8 +12,10 @@ import { SettingsModal } from './components/modals/SettingsModal';
 import { ReadmeModal } from './components/modals/ReadmeModal';
 import { ProjectMapModal } from './components/modals/ProjectMapModal';
 import { PreviewModal } from './components/modals/PreviewModal';
+import { SaveChatModal } from './components/modals/SaveChatModal';
+import { LoadChatModal } from './components/modals/LoadChatModal';
 
-import { RESPONSE_LENGTHS } from './utils/constants';
+import { RESPONSE_LENGTHS, INITIAL_MESSAGE } from './utils/constants';
 
 function App() {
   // ── Settings state ─────────────────────────────────────────────────────────
@@ -59,6 +62,19 @@ function App() {
   // ── Project data (README, project map) ────────────────────────────────────
   const projectData = useProjectData({ githubToken, owner, selectedRepo });
 
+  // ── Saved chats ────────────────────────────────────────────────────────────
+  const savedChats = useSavedChats({ aiKey, githubToken, owner, selectedRepo });
+
+  const handleLoadChat = (chatEntry) => {
+    if (chatEntry.type === 'summary') {
+      const summaryMsg = { role: 'bot', text: `📂 שיחה טעונה — ${chatEntry.title}\n\n${chatEntry.content}` };
+      chat.setMessages([INITIAL_MESSAGE, summaryMsg]);
+    } else {
+      const msgs = Array.isArray(chatEntry.content) ? chatEntry.content : [];
+      chat.setMessages(msgs.length > 0 ? msgs : [INITIAL_MESSAGE]);
+    }
+  };
+
   // ── Render ─────────────────────────────────────────────────────────────────
   return (
     <div style={{
@@ -74,6 +90,9 @@ function App() {
         fontSize={fontSize}
         changeFontSize={changeFontSize}
         clearSession={chat.clearSession}
+        compressSession={chat.compressSession}
+        onOpenSave={savedChats.openSave}
+        onOpenLoad={savedChats.openLoad}
         fetchReadme={projectData.fetchReadme}
         fetchProjectMap={projectData.fetchProjectMap}
         onOpenSettings={() => setShowSettings(true)}
@@ -139,6 +158,24 @@ function App() {
           setPreviewTab={chat.setPreviewTab}
           executePlan={chat.executePlan}
           onClose={() => chat.setShowPreview(false)}
+        />
+      )}
+
+      {savedChats.showSaveModal && (
+        <SaveChatModal
+          messages={chat.messages}
+          saveLoading={savedChats.saveLoading}
+          onSave={savedChats.saveChat}
+          onClose={() => savedChats.setShowSaveModal(false)}
+        />
+      )}
+
+      {savedChats.showLoadModal && (
+        <LoadChatModal
+          savedChats={savedChats.savedChats}
+          loadListLoading={savedChats.loadListLoading}
+          onLoad={handleLoadChat}
+          onClose={() => savedChats.setShowLoadModal(false)}
         />
       )}
     </div>

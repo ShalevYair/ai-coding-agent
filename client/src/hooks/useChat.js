@@ -108,6 +108,20 @@ export function useChat({ aiKey, githubToken, owner, selectedRepo, responseLengt
     setLoading(false);
   };
 
+  const compressSession = async () => {
+    if (loading || messages.length < 2) return;
+    setLoading(true);
+    try {
+      const res = await axios.post('/api/compress', { messages }, { headers: authHeaders });
+      const summaryMsg = { role: 'bot', text: `🗜️ סיכום השיחה:\n\n${res.data.summary}` };
+      setMessages([INITIAL_MESSAGE, summaryMsg]);
+      setPendingPlan(null);
+    } catch (e) {
+      setMessages(prev => [...prev, { role: 'bot', text: `❌ שגיאת דחיסה: ${e.response?.data?.error || e.message}` }]);
+    }
+    setLoading(false);
+  };
+
   const fetchPreview = async (plan) => {
     setShowPreview(true);
     setPreviewLoading(true);
@@ -126,8 +140,8 @@ export function useChat({ aiKey, githubToken, owner, selectedRepo, responseLengt
   };
 
   return {
-    messages, loading, pendingPlan, contextFiles,
-    clearSession, toggleContextFile,
+    messages, setMessages, loading, pendingPlan, contextFiles,
+    clearSession, toggleContextFile, compressSession,
     sendMessage, answerAsk, executePlan, fetchPreview,
     showPreview, setShowPreview,
     previewData, previewLoading,

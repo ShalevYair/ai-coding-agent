@@ -127,6 +127,30 @@ Just the raw code/text exactly as it should be saved to disk.`;
     }
   }
 
+  async summarizeConversation(convoText) {
+    try {
+      const prompt = `להלן שיחה בין משתמש לסוכן AI לכתיבת קוד. סכם אותה בעברית בצורה קצרה וממוקדת (3-6 משפטים) — מה נדון, אילו שינויים בוצעו, ומה הוחלט. החזר רק את הסיכום, ללא כותרות.
+
+${convoText}`;
+      const result = await this.model.generateContent(prompt);
+      return result.response.text().trim();
+    } catch (e) {
+      throw new Error(`Summarize failed: ${e.message}`);
+    }
+  }
+
+  async generateTitle(convoText) {
+    try {
+      const prompt = `בהתבסס על השיחה הבאה, צור כותרת קצרה בעברית (3-6 מילים) שמתארת את נושא השיחה. החזר רק את הכותרת, ללא פיסוק מיוחד.
+
+${convoText.substring(0, 2000)}`;
+      const result = await this.model.generateContent(prompt);
+      return result.response.text().trim();
+    } catch (e) {
+      return 'שיחה שמורה';
+    }
+  }
+
   async describeFile(filePath, content) {
     try {
       const prompt = `File path: ${filePath}

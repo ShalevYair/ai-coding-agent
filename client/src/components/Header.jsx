@@ -7,7 +7,8 @@ import { iconBtn } from '../utils/theme';
 export function Header({
   selectedRepo, responseLength, cycleResponseLength,
   fontSize, changeFontSize,
-  clearSession, fetchReadme, fetchProjectMap, onOpenSettings
+  clearSession, compressSession, onOpenSave, onOpenLoad,
+  fetchReadme, fetchProjectMap, onOpenSettings
 }) {
   return (
     <div style={{
@@ -26,6 +27,15 @@ export function Header({
       <div style={{ display: 'flex', gap: '2px', alignItems: 'center' }}>
         <Tooltip text="שיחה חדשה">
           <button style={{ ...iconBtn, color: '#64748b' }} onClick={clearSession}>🗑️</button>
+        </Tooltip>
+        <Tooltip text="דחוס שיחה">
+          <button style={iconBtn} onClick={compressSession}>🗜️</button>
+        </Tooltip>
+        <Tooltip text="שמור שיחה">
+          <button style={iconBtn} onClick={onOpenSave}>💾</button>
+        </Tooltip>
+        <Tooltip text="טען שיחה">
+          <button style={iconBtn} onClick={onOpenLoad}>📂</button>
         </Tooltip>
         <Tooltip text={RESPONSE_LENGTHS[responseLength].label}>
           <button style={iconBtn} onClick={cycleResponseLength}>
