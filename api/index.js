@@ -51,6 +51,20 @@ function flattenOldStructure(node, prefix = '') {
   return result;
 }
 
+// Compress history before sending to AI:
+// - Strips executed plan blocks [[[...]]] to avoid confusing the model
+// - Truncates long messages (code dumps, etc.) to cap token usage
+// - Keeps last 8 messages
+function compressHistory(history) {
+  return (history || [])
+    .slice(-8)
+    .map(msg => {
+      let text = (msg.text || '').replace(/\[\[\[[\s\S]*?\]\]\]/g, '[תוכנית בוצעה]');
+      if (text.length > 800) text = text.substring(0, 800) + '… [קוצר]';
+      return { ...msg, text };
+    });
+}
+
 const SKIP_FILES = new Set([
   'project_map.json', 'package-lock.json', '.gitignore', '.prettierrc.json', 'LICENSE'
 ]);
@@ -198,7 +212,7 @@ USER MESSAGE: ${prompt}
     `.trim();
 
     const updatedContext = { ...context, realTimeFileList: allFiles };
-    const response = await ai.chat(enrichedPrompt, history.slice(-10), updatedContext, responseLength || 'short');
+    const response = await ai.chat(enrichedPrompt, compressHistory(history), updatedContext, responseLength || 'short');
     res.json({ response });
   } catch (e) {
     console.error("Chat Error:", e.message);
