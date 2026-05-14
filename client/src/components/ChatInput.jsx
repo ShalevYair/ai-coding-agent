@@ -1,14 +1,42 @@
-import React, { useState } from 'react';
+import React, { useState, useRef, useCallback } from 'react';
 import { Send, X } from 'lucide-react';
+
+const LINE_HEIGHT = 24;
+const MAX_LINES = 6;
 
 export function ChatInput({ loading, sendMessage, contextFiles, toggleContextFile, fontSize }) {
   const [inputText, setInputText] = useState('');
+  const textareaRef = useRef(null);
+
+  const adjustHeight = useCallback(() => {
+    const ta = textareaRef.current;
+    if (!ta) return;
+    ta.style.height = 'auto';
+    const maxHeight = LINE_HEIGHT * MAX_LINES;
+    ta.style.height = Math.min(ta.scrollHeight, maxHeight) + 'px';
+    ta.style.overflowY = ta.scrollHeight > maxHeight ? 'auto' : 'hidden';
+  }, []);
+
+  const handleChange = (e) => {
+    setInputText(e.target.value);
+    adjustHeight();
+  };
 
   const handleSend = () => {
     if (!inputText.trim() || loading) return;
     const text = inputText;
     setInputText('');
     sendMessage(text);
+    // Reset height
+    const ta = textareaRef.current;
+    if (ta) { ta.style.height = LINE_HEIGHT + 'px'; ta.style.overflowY = 'hidden'; }
+  };
+
+  const handleKeyDown = (e) => {
+    if (e.key === 'Enter' && !e.shiftKey) {
+      e.preventDefault();
+      handleSend();
+    }
   };
 
   return (
@@ -35,23 +63,28 @@ export function ChatInput({ loading, sendMessage, contextFiles, toggleContextFil
       <div style={{
         padding: '10px 12px', background: '#fff',
         borderTop: '1px solid #e2e8f0',
-        display: 'flex', gap: '8px', flexShrink: 0
+        display: 'flex', gap: '8px', alignItems: 'flex-end', flexShrink: 0
       }}>
-        <input
+        <textarea
+          ref={textareaRef}
           value={inputText}
-          onChange={e => setInputText(e.target.value)}
-          onKeyPress={e => e.key === 'Enter' && handleSend()}
-          placeholder="מה נבנה עכשיו?"
+          onChange={handleChange}
+          onKeyDown={handleKeyDown}
+          placeholder="מה נבנה עכשיו? (Shift+Enter לשורה חדשה)"
+          rows={1}
           style={{
             flex: 1, padding: '10px 12px', borderRadius: '10px',
             border: '1px solid #e2e8f0', outline: 'none',
-            fontSize: `${fontSize}px`, fontFamily: 'Rubik, sans-serif'
+            fontSize: `${fontSize}px`, fontFamily: 'Rubik, sans-serif',
+            resize: 'none', lineHeight: `${LINE_HEIGHT}px`,
+            height: `${LINE_HEIGHT}px`,
+            overflowY: 'hidden', direction: 'rtl'
           }}
         />
         <button onClick={handleSend} disabled={loading} style={{
           background: loading ? '#94a3b8' : '#3b82f6', color: '#fff',
           border: 'none', padding: '10px 12px', borderRadius: '10px',
-          cursor: loading ? 'not-allowed' : 'pointer'
+          cursor: loading ? 'not-allowed' : 'pointer', flexShrink: 0
         }}>
           <Send size={18} />
         </button>
