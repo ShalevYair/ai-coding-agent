@@ -190,8 +190,17 @@ const modalInputStyle = {
 
 // ─── App ────────────────────────────────────────────────────────────────────
 
+const INITIAL_MESSAGE = { role: 'bot', text: 'היי! אני מוכן. מה בונים היום?' };
+
+function loadSavedMessages() {
+  try {
+    const saved = localStorage.getItem('chat_messages');
+    return saved ? JSON.parse(saved) : [INITIAL_MESSAGE];
+  } catch (e) { return [INITIAL_MESSAGE]; }
+}
+
 function App() {
-  const [messages, setMessages] = useState([{ role: 'bot', text: 'היי! אני מוכן. מה בונים היום?' }]);
+  const [messages, setMessages] = useState(loadSavedMessages);
   const [inputText, setInputText] = useState('');
   const [loading, setLoading] = useState(false);
   const [pendingPlan, setPendingPlan] = useState(null);
@@ -222,6 +231,18 @@ function App() {
   const [mapLoading, setMapLoading] = useState(false);
   const [selectedMapFile, setSelectedMapFile] = useState(null);
 
+  // Context files pinned from project map
+  const [contextFiles, setContextFiles] = useState([]);
+  const toggleContextFile = (path) =>
+    setContextFiles(prev => prev.includes(path) ? prev.filter(f => f !== path) : [...prev, path]);
+
+  // Preview modal (#7)
+  const [showPreview, setShowPreview] = useState(false);
+  const [previewData, setPreviewData] = useState([]);   // [{ file, current, proposed, description }]
+  const [previewLoading, setPreviewLoading] = useState(false);
+  const [previewFileIdx, setPreviewFileIdx] = useState(0);
+  const [previewTab, setPreviewTab] = useState('after'); // 'before' | 'after'
+
   const chatEndRef = useRef(null);
 
   useEffect(() => {
@@ -241,6 +262,17 @@ function App() {
   useEffect(() => {
     chatEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages, loading]);
+
+  // Persist chat session
+  useEffect(() => {
+    try { localStorage.setItem('chat_messages', JSON.stringify(messages)); } catch (e) {}
+  }, [messages]);
+
+  const clearSession = () => {
+    setMessages([INITIAL_MESSAGE]);
+    setPendingPlan(null);
+    setContextFiles([]);
+  };
 
   useEffect(() => {
     localStorage.setItem('response_length', responseLength);
@@ -265,6 +297,23 @@ function App() {
 
   const cycleResponseLength = () => {
     setResponseLength(prev => RESPONSE_LENGTHS[prev].next);
+  };
+
+  const fetchPreview = async (plan) => {
+    setShowPreview(true);
+    setPreviewLoading(true);
+    setPreviewFileIdx(0);
+    setPreviewTab('after');
+    try {
+      const res = await axios.post('/api/preview', {
+        plan,
+        context: { owner, repo: selectedRepo }
+      }, { headers: { 'x-ai-key': aiKey, 'x-github-token': githubToken } });
+      setPreviewData(res.data.previews || []);
+    } catch (e) {
+      setPreviewData([{ file: 'שגיאה', current: '', proposed: e.response?.data?.error || e.message }]);
+    }
+    setPreviewLoading(false);
   };
 
   const fetchReadme = async () => {
@@ -310,7 +359,8 @@ function App() {
         prompt: userMsg,
         history: messages,
         context: { owner, repo: selectedRepo },
-        responseLength
+        responseLength,
+        contextFiles
       }, { headers: { 'x-ai-key': aiKey, 'x-github-token': githubToken } });
 
       const aiRes = res.data.response;
@@ -428,6 +478,9 @@ function App() {
         </div>
 
         <div style={{ display: 'flex', gap: '2px', alignItems: 'center' }}>
+          <Tooltip text="שיחה חדשה">
+            <button style={{ ...iconBtn, color: '#64748b' }} onClick={clearSession}>🗑️</button>
+          </Tooltip>
           <Tooltip text={RESPONSE_LENGTHS[responseLength].label}>
             <button style={iconBtn} onClick={cycleResponseLength}>
               {RESPONSE_LENGTHS[responseLength].icon}
@@ -500,14 +553,24 @@ function App() {
                       ))
                     ))}
                   </ul>
-                  <button onClick={executePlan} style={{
-                    width: '100%', padding: '9px', background: '#10b981', color: '#fff',
-                    border: 'none', borderRadius: '8px', fontWeight: 'bold', cursor: 'pointer',
-                    display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px',
-                    fontSize: '13px'
-                  }}>
-                    <CheckCircle2 size={16} /> אשר ביצוע בגיט
-                  </button>
+                  <div style={{ display: 'flex', gap: '6px' }}>
+                    <button onClick={() => fetchPreview(m.plan)} style={{
+                      flex: 1, padding: '9px', background: '#fff', color: '#475569',
+                      border: '1px solid #cbd5e1', borderRadius: '8px', fontWeight: '600',
+                      cursor: 'pointer', fontSize: '12px',
+                      display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '5px'
+                    }}>
+                      👁️ תצוגה מקדימה
+                    </button>
+                    <button onClick={executePlan} style={{
+                      flex: 1, padding: '9px', background: '#10b981', color: '#fff',
+                      border: 'none', borderRadius: '8px', fontWeight: 'bold', cursor: 'pointer',
+                      display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '5px',
+                      fontSize: '12px'
+                    }}>
+                      <CheckCircle2 size={15} /> אשר ביצוע
+                    </button>
+                  </div>
                 </div>
               )}
             </div>
@@ -530,6 +593,26 @@ function App() {
         )}
         <div ref={chatEndRef} />
       </div>
+
+      {/* Context file chips */}
+      {contextFiles.length > 0 && (
+        <div style={{
+          padding: '6px 12px', background: '#eff6ff',
+          borderTop: '1px solid #bfdbfe',
+          display: 'flex', flexWrap: 'wrap', gap: '5px', flexShrink: 0
+        }}>
+          <span style={{ fontSize: '10px', color: '#3b82f6', fontWeight: '600', alignSelf: 'center' }}>📌 קונטקסט:</span>
+          {contextFiles.map(f => (
+            <span key={f} style={{
+              background: '#dbeafe', color: '#1d4ed8', padding: '2px 7px',
+              borderRadius: '99px', fontSize: '10px', fontFamily: 'JetBrains Mono, monospace',
+              display: 'flex', alignItems: 'center', gap: '4px', cursor: 'pointer'
+            }} onClick={() => toggleContextFile(f)}>
+              {f.split('/').pop()} <X size={9} />
+            </span>
+          ))}
+        </div>
+      )}
 
       {/* Input */}
       <div style={{
@@ -677,25 +760,32 @@ function App() {
                         {dir}/
                       </div>
                       {paths.map(path => (
-                        <button key={path} onClick={() => setSelectedMapFile(path)}
-                          style={{
-                            display: 'block', width: '100%', textAlign: 'left',
-                            background: selectedMapFile === path ? '#eff6ff' : 'transparent',
-                            border: 'none', cursor: 'pointer',
-                            padding: '5px 8px', borderRadius: '6px',
-                            fontSize: '12px', fontFamily: 'monospace',
-                            color: '#1e293b', direction: 'ltr',
-                            marginBottom: '1px',
-                            transition: 'background 0.1s'
-                          }}
-                          onMouseEnter={e => { if (selectedMapFile !== path) e.currentTarget.style.background = '#f8fafc'; }}
-                          onMouseLeave={e => { if (selectedMapFile !== path) e.currentTarget.style.background = 'transparent'; }}
-                        >
-                          📄 {path.split('/').pop()}
-                          <span style={{ color: '#94a3b8', fontSize: '11px', marginRight: '4px' }}>
-                            {path.includes('/') ? ` (${path})` : ''}
-                          </span>
-                        </button>
+                        <div key={path} style={{
+                          display: 'flex', alignItems: 'center', gap: '4px',
+                          padding: '3px 4px', borderRadius: '6px', marginBottom: '1px',
+                          background: selectedMapFile === path ? '#eff6ff' : 'transparent',
+                        }}>
+                          <button onClick={() => setSelectedMapFile(path)} style={{
+                            flex: 1, textAlign: 'left', background: 'transparent',
+                            border: 'none', cursor: 'pointer', padding: '2px 4px',
+                            fontSize: '12px', fontFamily: 'JetBrains Mono, monospace',
+                            color: '#1e293b', direction: 'ltr'
+                          }}>
+                            📄 {path.split('/').pop()}
+                            <span style={{ color: '#94a3b8', fontSize: '10px', marginRight: '4px' }}>
+                              {path.includes('/') ? ` (${path})` : ''}
+                            </span>
+                          </button>
+                          <button onClick={() => { toggleContextFile(path); setShowMap(false); }} style={{
+                            background: contextFiles.includes(path) ? '#dbeafe' : 'transparent',
+                            border: '1px solid ' + (contextFiles.includes(path) ? '#93c5fd' : '#e2e8f0'),
+                            borderRadius: '4px', cursor: 'pointer', padding: '2px 5px',
+                            fontSize: '10px', color: contextFiles.includes(path) ? '#1d4ed8' : '#94a3b8',
+                            whiteSpace: 'nowrap', flexShrink: 0
+                          }}>
+                            {contextFiles.includes(path) ? '📌' : '+ קונטקסט'}
+                          </button>
+                        </div>
                       ))}
                     </div>
                   ))}
@@ -739,6 +829,103 @@ function App() {
             <p style={{ margin: 0, fontSize: '13px', color: '#475569', lineHeight: '1.5' }}>
               {mapData.files[selectedMapFile] || 'אין תיאור זמין לקובץ זה.'}
             </p>
+          </div>
+        </div>
+      )}
+      {/* ── Preview Modal ── */}
+      {showPreview && (
+        <div style={modalOverlay} onClick={() => setShowPreview(false)}>
+          <div style={{ ...modalCard('660px', '88vh'), direction: 'ltr' }} onClick={e => e.stopPropagation()}>
+            {/* Header */}
+            <div style={{
+              padding: '12px 16px', borderBottom: '1px solid #e2e8f0',
+              display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+              flexShrink: 0, direction: 'rtl'
+            }}>
+              <span style={{ fontWeight: 'bold', fontSize: '14px' }}>👁️ תצוגה מקדימה</span>
+              <X onClick={() => setShowPreview(false)} style={{ cursor: 'pointer', color: '#94a3b8' }} size={20} />
+            </div>
+
+            {previewLoading ? (
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', flex: 1, gap: '10px', color: '#64748b' }}>
+                <Loader2 className="animate-spin" size={22} />
+                <span style={{ direction: 'rtl' }}>מפעיל AI לצפייה מקדימה...</span>
+              </div>
+            ) : (
+              <>
+                {/* File tabs */}
+                {previewData.length > 1 && (
+                  <div style={{ display: 'flex', overflowX: 'auto', borderBottom: '1px solid #e2e8f0', flexShrink: 0 }}>
+                    {previewData.map((p, i) => (
+                      <button key={i} onClick={() => setPreviewFileIdx(i)} style={{
+                        padding: '8px 14px', border: 'none', cursor: 'pointer', whiteSpace: 'nowrap',
+                        background: previewFileIdx === i ? '#fff' : '#f8fafc',
+                        borderBottom: previewFileIdx === i ? '2px solid #3b82f6' : '2px solid transparent',
+                        fontSize: '11px', fontFamily: 'JetBrains Mono, monospace',
+                        color: previewFileIdx === i ? '#1d4ed8' : '#64748b'
+                      }}>
+                        {p.file}
+                      </button>
+                    ))}
+                  </div>
+                )}
+
+                {previewData[previewFileIdx] && (
+                  <>
+                    {/* File info + before/after toggle */}
+                    <div style={{
+                      padding: '8px 14px', background: '#f8fafc',
+                      borderBottom: '1px solid #e2e8f0', flexShrink: 0,
+                      display: 'flex', justifyContent: 'space-between', alignItems: 'center'
+                    }}>
+                      <code style={{ fontSize: '11px', color: '#475569' }}>{previewData[previewFileIdx].file}</code>
+                      <div style={{ display: 'flex', gap: '4px' }}>
+                        {['before', 'after'].map(tab => (
+                          <button key={tab} onClick={() => setPreviewTab(tab)} style={{
+                            padding: '3px 10px', fontSize: '11px', cursor: 'pointer',
+                            borderRadius: '5px', border: '1px solid #e2e8f0',
+                            background: previewTab === tab ? '#3b82f6' : '#fff',
+                            color: previewTab === tab ? '#fff' : '#64748b'
+                          }}>
+                            {tab === 'before' ? 'לפני' : 'אחרי'}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+
+                    {/* Code viewer */}
+                    <div style={{ flex: 1, overflowY: 'auto' }}>
+                      <pre style={{
+                        margin: 0, padding: '14px 16px',
+                        background: '#1e293b', color: '#e2e8f0',
+                        fontSize: '12px', lineHeight: '1.65',
+                        fontFamily: 'JetBrains Mono, monospace',
+                        minHeight: '100%'
+                      }}>
+                        {previewTab === 'before'
+                          ? (previewData[previewFileIdx].current || '// קובץ חדש')
+                          : previewData[previewFileIdx].proposed}
+                      </pre>
+                    </div>
+
+                    {/* Execute from preview */}
+                    <div style={{
+                      padding: '10px 14px', borderTop: '1px solid #e2e8f0',
+                      flexShrink: 0, direction: 'rtl'
+                    }}>
+                      <button onClick={() => { setShowPreview(false); executePlan(); }} style={{
+                        width: '100%', padding: '10px', background: '#10b981', color: '#fff',
+                        border: 'none', borderRadius: '8px', fontWeight: 'bold', cursor: 'pointer',
+                        display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px',
+                        fontSize: '13px'
+                      }}>
+                        <CheckCircle2 size={16} /> אשר ביצוע בגיט
+                      </button>
+                    </div>
+                  </>
+                )}
+              </>
+            )}
           </div>
         </div>
       )}

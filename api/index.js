@@ -159,7 +159,7 @@ app.get('/api/file', async (req, res) => {
 app.post('/api/chat', chatLimiter, async (req, res) => {
   try {
     const { ai, github } = getServices(req);
-    const { prompt, history, context, responseLength } = req.body;
+    const { prompt, history, context, responseLength, contextFiles } = req.body;
 
     if (!prompt || typeof prompt !== 'string') {
       return res.status(400).json({ error: 'שדה prompt חסר או לא תקין.' });
@@ -204,8 +204,22 @@ app.post('/api/chat', chatLimiter, async (req, res) => {
       }
     }
 
+    // Fetch explicitly pinned context files (user selected from project map)
+    let pinnedContent = "";
+    if (Array.isArray(contextFiles) && contextFiles.length > 0) {
+      for (const filePath of contextFiles) {
+        if (!coreFiles.includes(filePath) && !dynamicContent.includes(`Content of ${filePath}`)) {
+          try {
+            const content = await github.getFile(context.owner, context.repo, filePath);
+            pinnedContent += `\n--- Content of ${filePath} (pinned by user) ---\n${content}\n`;
+          } catch (e) {}
+        }
+      }
+    }
+
     const enrichedPrompt = `
 ${coreContent}
+${pinnedContent}
 ${dynamicContent}
 
 USER MESSAGE: ${prompt}
@@ -255,6 +269,31 @@ app.post('/api/execute', executeLimiter, async (req, res) => {
     res.json({ success: true });
   } catch (e) {
     console.error("Execution Error:", e.message);
+    res.status(500).json({ error: e.message });
+  }
+});
+
+// Preview: generate proposed content without committing to GitHub
+app.post('/api/preview', executeLimiter, async (req, res) => {
+  try {
+    const { github, ai } = getServices(req);
+    const { plan, context } = req.body;
+
+    if (!plan || !Array.isArray(plan) || !context?.owner || !context?.repo) {
+      return res.status(400).json({ error: 'פרמטרים חסרים.' });
+    }
+
+    const previews = [];
+    for (const action of plan) {
+      for (const file of action.affectedFiles) {
+        const current = await github.getFile(context.owner, context.repo, file);
+        const proposed = await ai.editCode(current, action.description);
+        previews.push({ file, current, proposed, description: action.description });
+      }
+    }
+    res.json({ previews });
+  } catch (e) {
+    console.error("Preview Error:", e.message);
     res.status(500).json({ error: e.message });
   }
 });
