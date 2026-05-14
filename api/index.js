@@ -17,6 +17,83 @@ const getServices = (req) => {
   };
 };
 
+// Flatten the old nested structure format { root: {...}, api: {...} } into { "path": "description" }
+function flattenOldStructure(node, prefix = '') {
+  const result = {};
+  for (const [key, value] of Object.entries(node)) {
+    if (typeof value === 'string') {
+      const filePath = prefix ? `${prefix}/${key}` : key;
+      result[filePath] = value;
+    } else if (value && typeof value === 'object') {
+      const subPrefix = key === 'root' ? '' : (prefix ? `${prefix}/${key}` : key);
+      Object.assign(result, flattenOldStructure(value, subPrefix));
+    }
+  }
+  return result;
+}
+
+const SKIP_FILES = new Set([
+  'project_map.json', 'package-lock.json', '.gitignore', '.prettierrc.json', 'LICENSE'
+]);
+
+async function updateProjectMap(github, ai, owner, repo, affectedFiles, allRepoFiles) {
+  const relevantFiles = allRepoFiles.filter(f =>
+    !SKIP_FILES.has(f.split('/').pop()) &&
+    !f.startsWith('node_modules/') &&
+    !f.includes('.git/')
+  );
+
+  let projectMap = {
+    project_name: repo,
+    last_updated: '',
+    summary: '',
+    tech_stack: [],
+    files: {}
+  };
+
+  try {
+    const existing = await github.getFile(owner, repo, 'project_map.json');
+    if (existing) {
+      const parsed = JSON.parse(existing);
+      // Migrate old nested structure to flat format
+      if (!parsed.files && parsed.structure) {
+        parsed.files = flattenOldStructure(parsed.structure);
+        delete parsed.structure;
+      }
+      projectMap = { ...projectMap, ...parsed };
+      if (!projectMap.files) projectMap.files = {};
+    }
+  } catch (e) { /* file doesn't exist yet */ }
+
+  // Sync file list: remove deleted files, add new ones
+  for (const path of Object.keys(projectMap.files)) {
+    if (!relevantFiles.includes(path)) delete projectMap.files[path];
+  }
+  for (const path of relevantFiles) {
+    if (!(path in projectMap.files)) projectMap.files[path] = '';
+  }
+
+  // Regenerate descriptions only for files that were changed
+  for (const filePath of affectedFiles) {
+    if (!SKIP_FILES.has(filePath.split('/').pop())) {
+      try {
+        const content = await github.getFile(owner, repo, filePath);
+        projectMap.files[filePath] = await ai.describeFile(filePath, content);
+      } catch (e) {
+        console.log(`Could not describe ${filePath}:`, e.message);
+      }
+    }
+  }
+
+  projectMap.last_updated = new Date().toISOString().split('T')[0];
+
+  await github.updateFile(
+    owner, repo, 'project_map.json',
+    JSON.stringify(projectMap, null, 2),
+    'Auto-update project_map.json'
+  );
+}
+
 app.get('/api/github/user-data', async (req, res) => {
   try {
     const token = req.headers['x-github-token'];
@@ -33,91 +110,82 @@ app.get('/api/github/user-data', async (req, res) => {
   }
 });
 
-// api/index.js - עדכון נתיב ה-Chat
+// Fetch any file from the active repo (used for README and project_map modals)
+app.get('/api/file', async (req, res) => {
+  try {
+    const { github } = getServices(req);
+    const { owner, repo, path } = req.query;
+    if (!path || !owner || !repo) return res.status(400).json({ error: 'Missing params: owner, repo, path' });
+    const content = await github.getFile(owner, repo, path);
+    res.json({ content });
+  } catch (e) {
+    res.status(404).json({ error: `File not found: ${e.message}` });
+  }
+});
+
 app.post('/api/chat', async (req, res) => {
   try {
     const { ai, github } = getServices(req);
-    const { prompt, history, context } = req.body;
+    const { prompt, history, context, responseLength } = req.body;
 
     if (!context.owner || !context.repo) {
       return res.json({ response: "חובה לבחור פרויקט בהגדרות." });
     }
 
-    // 1. שליפת רשימת הקבצים המעודכנת
     const allFiles = await github.getAiMap(context.owner, context.repo);
-    
-    // 2. קריאה אוטומטית של "קבצי זיכרון" (הסוכן תמיד יראה אותם)
+
+    // Always read core context files
     let coreContent = "";
     const coreFiles = ['Gemini.md', 'project_map.json'];
-    
     for (const file of coreFiles) {
       if (allFiles.includes(file)) {
         try {
           const content = await github.getFile(context.owner, context.repo, file);
-          coreContent += `\n--- Content of ${file} (Core File) ---\n${content}\n`;
-        } catch (e) { console.log(`Failed to read core file: ${file}`); }
+          coreContent += `\n--- Content of ${file} ---\n${content}\n`;
+        } catch (e) {}
       }
     }
 
-    // 3. זיהוי דינמי חכם במיוחד (Fuzzy matching)
+    // Dynamically fetch files mentioned in the prompt (fuzzy match)
     let dynamicContent = "";
     const lowerPrompt = prompt.toLowerCase();
-    
     for (const filePath of allFiles) {
       const lowerPath = filePath.toLowerCase();
       const fileName = filePath.split('/').pop().toLowerCase();
       const fileNameNoExt = fileName.split('.').slice(0, -1).join('.').toLowerCase();
-    
-      // בודק אם השאלה מכילה את הנתיב המלא, את שם הקובץ, או את השם בלי הסיומת (למשל TEST)
-      const isRequested = lowerPrompt.includes(lowerPath) || 
-                         lowerPrompt.includes(fileName) || 
-                         (fileNameNoExt.length > 2 && lowerPrompt.includes(fileNameNoExt));
-    
+      const isRequested =
+        lowerPrompt.includes(lowerPath) ||
+        lowerPrompt.includes(fileName) ||
+        (fileNameNoExt.length > 2 && lowerPrompt.includes(fileNameNoExt));
       if (isRequested && !coreFiles.includes(filePath)) {
         try {
-          console.log(`🔍 Smart Fetching: ${filePath}`);
           const content = await github.getFile(context.owner, context.repo, filePath);
           dynamicContent += `\n--- Content of ${filePath} ---\n${content}\n`;
-        } catch (e) {
-          console.log(`❌ Failed to fetch ${filePath}`);
-        }
+        } catch (e) {}
       }
     }
 
-    // 4. בניית הפרומפט המועשר (Enriched Prompt)
-    // אנחנו מזריקים לי את כל הידע לפני שאני בכלל עונה
     const enrichedPrompt = `
-      Project Context for ${context.owner}/${context.repo}:
-      Files in repo: ${allFiles.join(', ')}
-      
-      ${coreContent}
-      ${dynamicContent}
-      
-      User Message: ${prompt}
-    `;
+${coreContent}
+${dynamicContent}
 
-    // 5. עדכון ה-Context עבור ה-AI (כדי שאדע מה רשימת הקבצים)
-    const updatedContext = {
-      ...context,
-      realTimeFileList: allFiles
-    };
+USER MESSAGE: ${prompt}
+    `.trim();
 
-    const response = await ai.chat(enrichedPrompt, history.slice(-10), updatedContext);
+    const updatedContext = { ...context, realTimeFileList: allFiles };
+    const response = await ai.chat(enrichedPrompt, history.slice(-10), updatedContext, responseLength || 'short');
     res.json({ response });
-
   } catch (e) {
-    console.error("Chat Logic Error:", e.message);
+    console.error("Chat Error:", e.message);
     res.status(500).json({ error: "שגיאה בעיבוד הצ'אט: " + e.message });
   }
 });
-
 
 app.post('/api/execute', async (req, res) => {
   try {
     const { github, ai } = getServices(req);
     const { plan, context } = req.body;
 
-    // הגנה: אם ה-Plan לא הגיע כמערך, לא ממשיכים
     if (!plan || !Array.isArray(plan)) {
       return res.status(400).json({ error: "ה-Plan שהתקבל אינו תקין" });
     }
@@ -126,10 +194,19 @@ app.post('/api/execute', async (req, res) => {
       for (const file of action.affectedFiles) {
         const currentContent = await github.getFile(context.owner, context.repo, file);
         const newContent = await ai.editCode(currentContent, action.description);
-        // קריאה לפונקציה המעודכנת ב-Service
         await github.updateFile(context.owner, context.repo, file, newContent, action.description);
       }
     }
+
+    // Update project_map.json after execution
+    try {
+      const allAffectedFiles = plan.flatMap(a => a.affectedFiles);
+      const allFiles = await github.getAiMap(context.owner, context.repo);
+      await updateProjectMap(github, ai, context.owner, context.repo, allAffectedFiles, allFiles);
+    } catch (e) {
+      console.error("project_map update failed:", e.message);
+    }
+
     res.json({ success: true });
   } catch (e) {
     console.error("Execution Error:", e.message);
