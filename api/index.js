@@ -1,12 +1,31 @@
 const express = require('express');
 const cors = require('cors');
+const rateLimit = require('express-rate-limit');
 const { Octokit } = require("@octokit/rest");
 const GitHubService = require('../server/services/githubService');
 const AIService = require('../server/services/aiService');
 
 const app = express();
 app.use(cors());
-app.use(express.json());
+// Limit request body to 200kb — prevents sending huge payloads
+app.use(express.json({ limit: '200kb' }));
+
+// Rate limiters (in-memory — effective on warm serverless instances)
+const chatLimiter = rateLimit({
+  windowMs: 60 * 1000,   // 1 minute window
+  max: 30,               // 30 chat messages per minute per IP
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { error: 'יותר מדי בקשות. נסה שוב בעוד דקה.' }
+});
+
+const executeLimiter = rateLimit({
+  windowMs: 60 * 1000,  // 1 minute window
+  max: 10,              // 10 executions per minute per IP
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { error: 'יותר מדי ביצועים. נסה שוב בעוד דקה.' }
+});
 
 const getServices = (req) => {
   const aiKey = req.headers['x-ai-key'];
@@ -123,12 +142,18 @@ app.get('/api/file', async (req, res) => {
   }
 });
 
-app.post('/api/chat', async (req, res) => {
+app.post('/api/chat', chatLimiter, async (req, res) => {
   try {
     const { ai, github } = getServices(req);
     const { prompt, history, context, responseLength } = req.body;
 
-    if (!context.owner || !context.repo) {
+    if (!prompt || typeof prompt !== 'string') {
+      return res.status(400).json({ error: 'שדה prompt חסר או לא תקין.' });
+    }
+    if (prompt.length > 8000) {
+      return res.status(400).json({ error: 'ההודעה ארוכה מדי (מקסימום 8000 תווים).' });
+    }
+    if (!context?.owner || !context?.repo) {
       return res.json({ response: "חובה לבחור פרויקט בהגדרות." });
     }
 
@@ -181,13 +206,19 @@ USER MESSAGE: ${prompt}
   }
 });
 
-app.post('/api/execute', async (req, res) => {
+app.post('/api/execute', executeLimiter, async (req, res) => {
   try {
     const { github, ai } = getServices(req);
     const { plan, context } = req.body;
 
     if (!plan || !Array.isArray(plan)) {
       return res.status(400).json({ error: "ה-Plan שהתקבל אינו תקין" });
+    }
+    if (plan.length > 20) {
+      return res.status(400).json({ error: "תוכנית גדולה מדי (מקסימום 20 פעולות)." });
+    }
+    if (!context?.owner || !context?.repo) {
+      return res.status(400).json({ error: "חסר owner או repo בקונטקסט." });
     }
 
     for (const action of plan) {
