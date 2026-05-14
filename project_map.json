@@ -1,6 +1,6 @@
 {
   "project_name": "AI Coding Agent",
-  "last_updated": "2026-05-11",
+  "last_updated": "2024-05-15",
   "summary": "סוכן פיתוח אוטונומי המשלב צ'אט מבוסס Gemini 2.5 Flash עם ניהול גרסאות ב-GitHub.",
   "tech_stack": [
     "React (Frontend)",
@@ -25,33 +25,6 @@
     },
     "api": {
       "index.js": "נקודת הכניסה לשרת (Serverless), מנהלת את ה-Chat וה-Execution."
-    },
-    "server": {
-      "app.js": "קובץ ההפעלה הראשי של שרת ה-Express.",
-      "package.json": "ניהול תלויות לצד השרת.",
-      "package-lock.json": "גרסאות נעולות לצד השרת.",
-      "routes": {
-        "chatRoutes.js": "הגדרת נתיבי API הקשורים לצ'אט ו-AI.",
-        "githubRoutes.js": "הגדרת נתיבי API הקשורים ל-GitHub."
-      },
-      "controllers": {
-        "chatController.js": "לוגיקה עסקית לטיפול בבקשות צ'אט ו-AI.",
-        "githubController.js": "לוגיקה עסקית לטיפול בבקשות GitHub."
-      },
-      "services": {
-        "githubService.js": "שירות אינטראקציה מול GitHub API.",
-        "aiService.js": "שירות תקשורת מול Gemini 2.5 Flash API."
-      },
-      "middleware": {
-        "authMiddleware.js": "פונקציות ביניים לאימות והרשאה.",
-        "errorMiddleware.js": "פונקציות ביניים לטיפול בשגיאות."
-      },
-      "utils": {
-        "errorHandler.js": "כלי עזר לטיפול בשגיאות בצד השרת."
-      },
-      "config": {
-        "index.js": "הגדרות קונפיגורציה שונות לצד השרת."
-      }
     },
     "client": {
       "package.json": "ניהול תלויות של ה-React App.",
