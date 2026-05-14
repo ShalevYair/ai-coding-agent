@@ -13,7 +13,7 @@ export function MessageBubble({ message: m, fontSize, executePlan, fetchPreview,
       fontSize: `${fontSize}px`, lineHeight: '1.6'
     }}>
       {m.role === 'bot' && <span style={{ marginLeft: '6px' }}>🤖</span>}
-      {formatMessage(m.text)}
+      {formatMessage(m.text, m.role === 'user')}
 
       {m.hasAsk && m.askData && (
         <div style={{ marginTop: '10px', borderTop: '1px solid #cbd5e1', paddingTop: '8px' }}>
