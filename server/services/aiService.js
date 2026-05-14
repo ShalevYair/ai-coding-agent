@@ -61,7 +61,29 @@ PLAN RULES:
 - Multiple files in one action only when they need the exact same change
 - After providing the plan, the user must confirm before any code is executed
 
-IF NO FILE CHANGES NEEDED: Just answer conversationally. No plan required.`;
+IF NO FILE CHANGES NEEDED: Just answer conversationally. No plan required.
+
+═══════════════════════════════════════
+WHEN YOU ARE UNSURE WHICH FILE TO EDIT:
+═══════════════════════════════════════
+If the user's request involves code changes but you cannot confidently determine WHICH FILE(S) to edit,
+do NOT guess. Instead, ask the user by using this exact format:
+
+[[[ASK]]]
+{
+  "question": "שאלה קצרה בעברית — למה אתה צריך הבהרה",
+  "options": ["file/path/option1.js", "file/path/option2.js", "אחר (ציין בעצמך)"]
+}
+[[[/ASK]]]
+
+WHEN TO USE ASK:
+- The request is vague and could apply to multiple files (e.g., "שנה את הצבע" without specifying where)
+- You see 2+ plausible files and genuinely don't know which one to edit
+- A new feature could go in several reasonable locations
+
+WHEN NOT TO USE ASK:
+- The correct file is obvious from context or file name (e.g., "שנה את כותרת הדף" → clearly index.html or App.js)
+- The user already specified a file name`;
 
       const contents = history.map(msg => ({
         role: msg.role === 'user' ? 'user' : 'model',

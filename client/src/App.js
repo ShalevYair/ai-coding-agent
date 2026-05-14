@@ -243,8 +243,23 @@ function App() {
       }, { headers: { 'x-ai-key': aiKey, 'x-github-token': githubToken } });
 
       const aiRes = res.data.response;
-      const planMatch = aiRes.match(/\[\[\[([\s\S]*?)\]\]\]/);
 
+      // Check for clarification request [[[ASK]]]...JSON...[[[/ASK]]]
+      const askMatch = aiRes.match(/\[\[\[ASK\]\]\]([\s\S]*?)\[\[\[\/ASK\]\]\]/);
+      if (askMatch) {
+        try {
+          const askData = JSON.parse(askMatch[1].trim());
+          const cleanText = aiRes.replace(/\[\[\[ASK\]\]\][\s\S]*?\[\[\[\/ASK\]\]\]/, '').trim();
+          setMessages(prev => [...prev, { role: 'bot', text: cleanText, hasAsk: true, askData }]);
+        } catch (e) {
+          setMessages(prev => [...prev, { role: 'bot', text: aiRes }]);
+        }
+        setLoading(false);
+        return;
+      }
+
+      // Check for execution plan [[[...json...]]]
+      const planMatch = aiRes.match(/\[\[\[(?!ASK)([\s\S]*?)\]\]\]/);
       if (planMatch) {
         try {
           let planData = JSON.parse(planMatch[1]);
@@ -263,6 +278,43 @@ function App() {
       setMessages(prev => [...prev, { role: 'bot', text: `❌ שגיאה: ${errorMsg}` }]);
     }
     setLoading(false);
+  };
+
+  const answerAsk = (option) => {
+    setInputText(option);
+    // Tiny delay so the input visually fills before auto-send
+    setTimeout(() => {
+      setInputText('');
+      setMessages(prev => [...prev, { role: 'user', text: option }]);
+      setLoading(true);
+      axios.post('/api/chat', {
+        prompt: option,
+        history: messages,
+        context: { owner, repo: selectedRepo },
+        responseLength
+      }, { headers: { 'x-ai-key': aiKey, 'x-github-token': githubToken } })
+        .then(res => {
+          const aiRes = res.data.response;
+          const planMatch = aiRes.match(/\[\[\[(?!ASK)([\s\S]*?)\]\]\]/);
+          if (planMatch) {
+            try {
+              let planData = JSON.parse(planMatch[1]);
+              const finalPlan = Array.isArray(planData) ? planData : [planData];
+              setPendingPlan(finalPlan);
+              const cleanText = aiRes.replace(/\[\[\[[\s\S]*?\]\]\]/, '').trim();
+              setMessages(prev => [...prev, { role: 'bot', text: cleanText, hasPlan: true, plan: finalPlan }]);
+            } catch (e) {
+              setMessages(prev => [...prev, { role: 'bot', text: aiRes }]);
+            }
+          } else {
+            setMessages(prev => [...prev, { role: 'bot', text: aiRes }]);
+          }
+        })
+        .catch(e => {
+          setMessages(prev => [...prev, { role: 'bot', text: `❌ שגיאה: ${e.message}` }]);
+        })
+        .finally(() => setLoading(false));
+    }, 0);
   };
 
   const executePlan = async () => {
@@ -338,6 +390,26 @@ function App() {
             }}>
               {m.role === 'bot' && <span style={{ marginLeft: '6px' }}>🤖</span>}
               {formatMessage(m.text)}
+
+              {m.hasAsk && m.askData && (
+                <div style={{ marginTop: '10px', borderTop: '1px solid #cbd5e1', paddingTop: '8px' }}>
+                  <div style={{ fontSize: '12px', color: '#64748b', marginBottom: '8px', fontWeight: '600' }}>
+                    🤔 {m.askData.question}
+                  </div>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                    {(m.askData.options || []).map((opt, idx) => (
+                      <button key={idx} onClick={() => answerAsk(opt)} style={{
+                        padding: '7px 10px', background: '#fff', color: '#1e293b',
+                        border: '1px solid #cbd5e1', borderRadius: '8px',
+                        cursor: 'pointer', fontSize: '12px', textAlign: 'right',
+                        fontFamily: 'monospace', direction: 'ltr'
+                      }}>
+                        {opt}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              )}
 
               {m.hasPlan && m.plan && (
                 <div style={{ marginTop: '10px', borderTop: '1px solid #cbd5e1', paddingTop: '8px' }}>
