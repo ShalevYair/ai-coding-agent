@@ -19,8 +19,8 @@
     "client/public/index.html": "דף ה-HTML הראשי עליו מתלבש ה-React.",
     "client/src/index.js": "נקודת הכניסה של ה-React לתוך ה-DOM.",
     "client/src/App.js": "הלוגיקה המרכזית של הממשק: צ'אט, הגדרות וניהול מצב.",
-    "TEST.MD": "",
-    "TEST2.MD": "",
+    "TEST.MD": "קובץ זה, בפורמט Markdown, משמש ככל הנראה לתיעוד הקשור לבדיקות הפרויקט. הוא עשוי לכלול הנחיות להרצת בדיקות, תיאור תוכנית הבדיקות או סיכום ממצאי בדיקה.",
+    "TEST2.MD": "זהו קובץ Markdown בשם TEST2.MD, ככל הנראה מיועד לבדיקות או כטיוטה. נכון לעכשיו, הקובץ ריק מתוכן.",
     "server/package.json": "",
     "server/services/aiService.js": "",
     "server/services/githubService.js": ""
