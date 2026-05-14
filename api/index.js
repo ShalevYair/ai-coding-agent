@@ -298,4 +298,84 @@ app.post('/api/preview', executeLimiter, async (req, res) => {
   }
 });
 
+// Compress: summarize the conversation with AI and return a short summary
+app.post('/api/compress', chatLimiter, async (req, res) => {
+  try {
+    const { ai } = getServices(req);
+    const { messages } = req.body;
+    if (!Array.isArray(messages) || messages.length === 0) {
+      return res.status(400).json({ error: 'messages array required' });
+    }
+    const convoText = messages
+      .filter(m => m.role !== 'bot' || !m.hasPlan)
+      .map(m => `${m.role === 'user' ? 'משתמש' : 'סוכן'}: ${m.text || ''}`)
+      .join('\n');
+    const summary = await ai.summarizeConversation(convoText);
+    res.json({ summary });
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
+// Save chat to Saved_Chats.json in the active repo
+app.post('/api/save-chat', executeLimiter, async (req, res) => {
+  try {
+    const { github, ai } = getServices(req);
+    const { messages, saveType, owner, repo } = req.body;
+    if (!owner || !repo || !Array.isArray(messages)) {
+      return res.status(400).json({ error: 'owner, repo, messages required' });
+    }
+
+    const convoText = messages
+      .map(m => `${m.role === 'user' ? 'משתמש' : 'סוכן'}: ${m.text || ''}`)
+      .join('\n');
+
+    const [title, summary] = await Promise.all([
+      ai.generateTitle(convoText),
+      saveType === 'summary' ? ai.summarizeConversation(convoText) : Promise.resolve(null)
+    ]);
+
+    const entry = {
+      id: Date.now().toString(),
+      title,
+      date: new Date().toISOString().split('T')[0],
+      type: saveType,
+      messageCount: messages.length,
+      content: saveType === 'summary' ? summary : messages
+    };
+
+    let chats = [];
+    try {
+      const existing = await github.getFile(owner, repo, 'Saved_Chats.json');
+      chats = JSON.parse(existing);
+    } catch (e) { /* file doesn't exist yet */ }
+
+    chats.unshift(entry);
+    // Keep at most 50 saved chats
+    if (chats.length > 50) chats = chats.slice(0, 50);
+
+    await github.updateFile(owner, repo, 'Saved_Chats.json', JSON.stringify(chats, null, 2), `Save chat: ${title}`);
+    res.json({ success: true, title });
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
+// Load list of saved chats from the active repo
+app.get('/api/saved-chats', async (req, res) => {
+  try {
+    const { github } = getServices(req);
+    const { owner, repo } = req.query;
+    if (!owner || !repo) return res.status(400).json({ error: 'owner, repo required' });
+    try {
+      const content = await github.getFile(owner, repo, 'Saved_Chats.json');
+      res.json({ chats: JSON.parse(content) });
+    } catch (e) {
+      res.json({ chats: [] });
+    }
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
 module.exports = app;
