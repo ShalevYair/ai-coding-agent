@@ -103,9 +103,14 @@ function App() {
   // ── Render ─────────────────────────────────────────────────────────────────
   return (
     <div style={{
-      maxWidth: '600px', margin: '0 auto',
-      height: '100dvh', display: 'flex', flexDirection: 'row',
-      background: '#f1f5f9', overflow: 'hidden', direction: 'rtl'
+      width: '100vw', // Full width of the viewport
+      height: '100dvh',
+      display: 'flex',
+      flexDirection: 'row',
+      justifyContent: 'space-between', // Push SideMenu and chat window to opposite ends
+      background: '#f1f5f9',
+      overflow: 'hidden',
+      direction: 'rtl'
     }}>
 
       {/* Right sidebar */}
@@ -138,7 +143,13 @@ function App() {
       />
 
       {/* Left — chat area */}
-      <div style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden', minWidth: 0 }}>
+      <div style={{
+        width: '600px', // Set a fixed width for the chat window
+        display: 'flex',
+        flexDirection: 'column',
+        overflow: 'hidden',
+        minWidth: 0
+      }}>
 
         {/* Mini header */}
         <div style={{
