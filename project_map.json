@@ -44,6 +44,6 @@
     "client/src/utils/theme.js": "",
     "client/src/components/SideMenu.jsx": "",
     "client/src/components/modals/ContextFilesModal.jsx": "קובץ זה מגדיר קומפוננטת מודל (ContextFilesModal) המאפשרת למשתמשים לנהל קבצי הקשר. המודל מציג קבצי הקשר פעילים ומאפשר חיפוש והוספה של קבצים חדשים מתוך רשימת כל הקבצים הזמינים.",
-    "client/src/components/modals/FileContentModal.jsx": "קובץ זה מגדיר קומפוננטת React מסוג מודל (modal) המאפשר למשתמש לצפות ולערוך תוכן של קובץ. המודל מציג את נתיב הקובץ, את התוכן הראשוני שלו ומספק פונקציונליות לשמירת השינויים."
+    "client/src/components/modals/FileContentModal.jsx": "קובץ זה מגדיר קומפוננטת מודאל ב-React (`FileContentModal`) המיועדת להצגה ועריכה של תוכן קבצים. היא מאפשרת למשתמשים לצפות בתוכן, לבצע בו שינויים ולשמור אותם."
   }
 }
