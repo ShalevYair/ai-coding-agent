@@ -24,7 +24,7 @@
     "server/services/githubService.js": "",
     "CLAUDE.md": "",
     "Saved_Chats.json": "",
-    "client/src/components/ChatInput.jsx": "קובץ זה מגדיר את רכיב קלט הצ'אט (ChatInput) המאפשר למשתמשים להקליד ולשלוח הודעות. הוא כולל תיבת טקסט המתאימה את גובהה באופן אוטומטי, מטפל בשליחת הודעות בלחיצת Enter, ומציג קבצי הקשר המצורפים.",
+    "client/src/components/ChatInput.jsx": "קובץ זה מגדיר את קומפוננטת ה-React `ChatInput`, המספקת שדה קלט טקסט דינמי לשליחת הודעות צ'אט. היא תומכת בשינוי גודל אוטומטי של תיבת הטקסט ומציגה קבצי הקשר מצורפים.",
     "client/src/components/ChatWindow.jsx": "",
     "client/src/components/Header.jsx": "",
     "client/src/components/MessageBubble.jsx": "",
