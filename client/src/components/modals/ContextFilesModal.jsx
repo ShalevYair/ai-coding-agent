@@ -5,7 +5,7 @@ import { modalOverlay, modalCard } from '../../utils/theme';
 export function ContextFilesModal({
   contextFiles, toggleContextFile,
   allFiles, onClose,
-  selectedRepo,
+  selectedRepo, onFileClick, // Added onFileClick prop
 }) {
   const [search, setSearch] = useState('');
   const [tab, setTab] = useState('active'); // 'active' | 'add'
@@ -63,10 +63,26 @@ export function ContextFilesModal({
                       padding: '8px 12px', background: '#eff6ff', borderRadius: '8px',
                       border: '1px solid #bfdbfe'
                     }}>
-                      <span style={{ fontSize: '12px', fontFamily: 'JetBrains Mono, monospace', color: '#1d4ed8' }}>{f}</span>
+                      {/* Make the file name clickable */}
+                      <div
+                        onClick={() => onFileClick && onFileClick(f)}
+                        style={{
+                          fontSize: '12px',
+                          fontFamily: 'JetBrains Mono, monospace',
+                          color: '#1d4ed8',
+                          cursor: onFileClick ? 'pointer' : 'default', // Add cursor pointer if onFileClick is provided
+                          flexGrow: 1, // Allow it to take available space
+                          overflow: 'hidden',
+                          textOverflow: 'ellipsis',
+                          whiteSpace: 'nowrap',
+                        }}
+                        title={f} // Add title for full path on hover
+                      >
+                        {f}
+                      </div>
                       <button onClick={() => toggleContextFile(f)} style={{
                         background: 'none', border: 'none', cursor: 'pointer',
-                        color: '#94a3b8', padding: '2px', display: 'flex'
+                        color: '#94a3b8', padding: '2px', display: 'flex', flexShrink: 0
                       }}>
                         <X size={14} />
                       </button>
