@@ -129,6 +129,8 @@ export function SideMenu({
   selectedRepo, setSelectedRepo, repoList,
   agentMode, cycleAgentMode,
   memoryMode, cycleMemoryMode,
+  maxRetries, cycleMaxRetries,
+  onUndo, canUndo,
   onOpenContextFiles,
 }) {
   const [showConfirm, setShowConfirm] = useState(false);
@@ -180,6 +182,24 @@ export function SideMenu({
 
           <SideBtn icon="🗜️" label="דחוס שיחה" title="דחוס שיחה"
             onClick={compressSession} isOpen={isOpen} />
+
+          <SideBtn
+            icon="↩️"
+            label="בטל שינוי אחרון"
+            title="שחזר גרסה קודמת מגיטהאב"
+            onClick={onUndo}
+            isOpen={isOpen}
+            disabled={!canUndo}
+          />
+
+          <SideBtn
+            icon={String(maxRetries)}
+            label={`${maxRetries} ניסיונות תיקון`}
+            title="מספר ניסיונות אוטומטי אם הביצוע נכשל — לחץ למעבר"
+            onClick={cycleMaxRetries}
+            isOpen={isOpen}
+            active={maxRetries !== 3}
+          />
 
           <Divider />
 

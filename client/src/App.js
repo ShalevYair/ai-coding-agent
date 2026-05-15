@@ -17,7 +17,7 @@ import { LoadChatModal } from './components/modals/LoadChatModal';
 import { ContextFilesModal } from './components/modals/ContextFilesModal';
 import FileContentModal from './components/modals/FileContentModal';
 
-import { RESPONSE_LENGTHS, AGENT_MODES, MEMORY_MODES, INITIAL_MESSAGE } from './utils/constants';
+import { RESPONSE_LENGTHS, AGENT_MODES, MEMORY_MODES, MAX_RETRIES_CYCLE, INITIAL_MESSAGE } from './utils/constants';
 
 function App() {
   // ── Settings state ─────────────────────────────────────────────────────────
@@ -35,6 +35,7 @@ function App() {
   const [autoSave, setAutoSave]           = useState(localStorage.getItem('auto_save') !== 'false');
   const [agentMode, setAgentMode]         = useState(localStorage.getItem('agent_mode') || 'dove');
   const [memoryMode, setMemoryMode]       = useState(localStorage.getItem('memory_mode') || 'cat');
+  const [maxRetries, setMaxRetries]       = useState(parseInt(localStorage.getItem('max_retries') || '3', 10));
   const [showContextFiles, setShowContextFiles] = useState(false);
   // מצבי קובץ לעריכה
   const [isFileContentModalOpen, setIsFileContentModalOpen] = useState(false);
@@ -55,6 +56,7 @@ function App() {
   useEffect(() => { localStorage.setItem('auto_save',       autoSave);        }, [autoSave]);
   useEffect(() => { localStorage.setItem('agent_mode',      agentMode);       }, [agentMode]);
   useEffect(() => { localStorage.setItem('memory_mode',     memoryMode);      }, [memoryMode]);
+  useEffect(() => { localStorage.setItem('max_retries',     maxRetries);      }, [maxRetries]);
 
   useEffect(() => {
     if (!aiKey || !githubToken || !selectedRepo) setShowSettings(true);
@@ -72,10 +74,11 @@ function App() {
   const cycleResponseLength = () => setResponseLength(prev => RESPONSE_LENGTHS[prev].next);
   const cycleAgentMode      = () => setAgentMode(prev => AGENT_MODES[prev].next);
   const cycleMemoryMode     = () => setMemoryMode(prev => MEMORY_MODES[prev].next);
+  const cycleMaxRetries     = () => setMaxRetries(prev => MAX_RETRIES_CYCLE[prev] || 3);
   const changeFontSize      = (delta) => setFontSize(prev => Math.min(20, Math.max(11, prev + delta)));
 
   // ── Chat logic ─────────────────────────────────────────────────────────────
-  const chat = useChat({ aiKey, githubToken, owner, selectedRepo, responseLength, agentMode, memoryMode });
+  const chat = useChat({ aiKey, githubToken, owner, selectedRepo, responseLength, agentMode, memoryMode, maxRetries });
 
   // ── Project data (README, project map) ────────────────────────────────────
   const projectData = useProjectData({ githubToken, owner, selectedRepo });
@@ -172,6 +175,10 @@ function App() {
         cycleAgentMode={cycleAgentMode}
         memoryMode={memoryMode}
         cycleMemoryMode={cycleMemoryMode}
+        maxRetries={maxRetries}
+        cycleMaxRetries={cycleMaxRetries}
+        onUndo={chat.undoLastExecution}
+        canUndo={chat.undoStack.length > 0}
         onOpenContextFiles={async () => { await projectData.ensureMapLoaded(); setShowContextFiles(true); }}
       />
 

@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import axios from 'axios';
 import { INITIAL_MESSAGE, loadSavedMessages, AGENT_MODES, MEMORY_MODES } from '../utils/constants';
 
@@ -23,11 +23,12 @@ function parseAIResponse(aiRes) {
   return { type: 'text', text: aiRes };
 }
 
-export function useChat({ aiKey, githubToken, owner, selectedRepo, responseLength, agentMode = 'dove', memoryMode = 'cat' }) {
+export function useChat({ aiKey, githubToken, owner, selectedRepo, responseLength, agentMode = 'dove', memoryMode = 'cat', maxRetries = 3 }) {
   const [messages, setMessages] = useState(loadSavedMessages);
   const [loading, setLoading] = useState(false);
   const [pendingPlan, setPendingPlan] = useState(null);
   const [contextFiles, setContextFiles] = useState([]);
+  const [undoStack, setUndoStack] = useState([]);
 
   // Agent multi-step state: null | { step: number, totalSteps: number, refinedPrompt: string }
   const [agentState, setAgentState] = useState(null);
@@ -38,21 +39,89 @@ export function useChat({ aiKey, githubToken, owner, selectedRepo, responseLengt
   const [previewFileIdx, setPreviewFileIdx] = useState(0);
   const [previewTab, setPreviewTab] = useState('after');
 
+  // Tracks which owner/repo combos were already checked for missing files
+  const checkedReposRef = useRef(new Set());
+
   useEffect(() => {
     try { localStorage.setItem('chat_messages', JSON.stringify(messages)); } catch (e) {}
   }, [messages]);
+
+  // Check for missing project_map.json and Gemini.md at the start of each new repo session
+  useEffect(() => {
+    if (!selectedRepo || !owner || !aiKey || !githubToken) return;
+    const key = `${owner}/${selectedRepo}`;
+    if (checkedReposRef.current.has(key)) return;
+    checkedReposRef.current.add(key);
+    checkMissingFiles(owner, selectedRepo);
+  }, [selectedRepo, owner, aiKey, githubToken]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const clearSession = () => {
     setMessages([INITIAL_MESSAGE]);
     setPendingPlan(null);
     setContextFiles([]);
     setAgentState(null);
+    setUndoStack([]);
   };
 
   const toggleContextFile = (path) =>
     setContextFiles(prev => prev.includes(path) ? prev.filter(f => f !== path) : [...prev, path]);
 
   const authHeaders = { 'x-ai-key': aiKey, 'x-github-token': githubToken };
+
+  const checkMissingFiles = async (repoOwner, repoName) => {
+    try {
+      const [mapResult, geminiResult] = await Promise.allSettled([
+        axios.get('/api/file', { params: { owner: repoOwner, repo: repoName, path: 'project_map.json' }, headers: { 'x-github-token': githubToken } }),
+        axios.get('/api/file', { params: { owner: repoOwner, repo: repoName, path: 'Gemini.md' }, headers: { 'x-github-token': githubToken } })
+      ]);
+
+      const mapMissing = mapResult.status === 'rejected' || !mapResult.value?.data?.content;
+      const geminiMissing = geminiResult.status === 'rejected' || !geminiResult.value?.data?.content;
+
+      if (mapMissing) {
+        setMessages(prev => [...prev, {
+          role: 'bot',
+          text: '📋 לא נמצא קובץ project_map.json בפרויקט זה.',
+          hasAsk: true,
+          askData: {
+            question: 'האם לסרוק את הפרויקט ולצור מפת קבצים עדכנית?',
+            options: ['כן, סרוק ועדכן', 'לא תודה'],
+            _action: 'scan-project'
+          }
+        }]);
+      }
+
+      if (geminiMissing) {
+        setMessages(prev => [...prev, {
+          role: 'bot',
+          text: '📄 לא נמצא קובץ Gemini.md (מדריך הפרויקט לסוכן).',
+          hasAsk: true,
+          askData: {
+            question: 'האם לנתח את הפרויקט ולצור קובץ Gemini.md?',
+            options: ['כן, צור Gemini.md', 'לא תודה'],
+            _action: 'create-gemini-md'
+          }
+        }]);
+      }
+    } catch (e) { /* silent — don't disrupt startup */ }
+  };
+
+  const handleSpecialAction = async (action) => {
+    try {
+      if (action === 'scan-project') {
+        setMessages(prev => [...prev, { role: 'bot', text: '⏳ סורק את הפרויקט ומעדכן מפת קבצים...' }]);
+        await axios.post('/api/scan-project', { context: { owner, repo: selectedRepo } }, { headers: authHeaders });
+        setMessages(prev => [...prev, { role: 'bot', text: '✅ מפת הפרויקט (project_map.json) עודכנה בהצלחה!' }]);
+      } else if (action === 'create-gemini-md') {
+        setMessages(prev => [...prev, { role: 'bot', text: '⏳ מנתח את הפרויקט ויוצר Gemini.md — זה עשוי לקחת כמה שניות...' }]);
+        await axios.post('/api/create-gemini-md', { context: { owner, repo: selectedRepo } }, { headers: authHeaders });
+        setMessages(prev => [...prev, { role: 'bot', text: '✅ קובץ Gemini.md נוצר בהצלחה! הסוכן יקרא אותו מעתה בכל שיחה.' }]);
+      }
+    } catch (e) {
+      setMessages(prev => [...prev, { role: 'bot', text: `❌ שגיאה: ${e.response?.data?.error || e.message}` }]);
+    }
+    setLoading(false);
+  };
 
   const _applyResponse = (parsed) => {
     if (parsed.type === 'ask') {
@@ -166,8 +235,19 @@ export function useChat({ aiKey, githubToken, owner, selectedRepo, responseLengt
     }
   };
 
-  const answerAsk = async (option, currentMessages) => {
+  const answerAsk = async (option, currentMessages, askData) => {
     setMessages(prev => [...prev, { role: 'user', text: option }]);
+
+    // Handle special system actions (scan-project, create-gemini-md)
+    if (askData?._action) {
+      const isPositive = !option.includes('לא');
+      if (isPositive) {
+        setLoading(true);
+        await handleSpecialAction(askData._action);
+      }
+      return;
+    }
+
     setLoading(true);
     await _doChat(option, currentMessages);
   };
@@ -175,15 +255,58 @@ export function useChat({ aiKey, githubToken, owner, selectedRepo, responseLengt
   const executePlan = async () => {
     if (!pendingPlan) return;
     setLoading(true);
+
+    let lastError = null;
+    const effectiveRetries = maxRetries || 1;
+
+    for (let attempt = 1; attempt <= effectiveRetries; attempt++) {
+      try {
+        if (attempt > 1) {
+          setMessages(prev => [...prev, {
+            role: 'bot',
+            text: `🔄 ניסיון תיקון ${attempt}/${effectiveRetries}...`
+          }]);
+          // Exponential backoff between retries
+          await new Promise(resolve => setTimeout(resolve, 1000 * attempt));
+        }
+
+        const res = await axios.post('/api/execute', {
+          plan: pendingPlan,
+          context: { owner, repo: selectedRepo }
+        }, { headers: authHeaders });
+
+        // Save snapshot for undo
+        if (res.data.snapshot) {
+          setUndoStack(prev => [...prev, res.data.snapshot]);
+        }
+
+        setMessages(prev => [...prev, { role: 'bot', text: '✅ בוצע! השינויים נדחפו לגיטהאב.' }]);
+        setPendingPlan(null);
+        setLoading(false);
+        return;
+      } catch (e) {
+        lastError = e.response?.data?.error || e.message;
+      }
+    }
+
+    const retryNote = effectiveRetries > 1 ? ` (לאחר ${effectiveRetries} ניסיונות)` : '';
+    setMessages(prev => [...prev, { role: 'bot', text: `❌ שגיאה בביצוע${retryNote}: ${lastError}` }]);
+    setLoading(false);
+  };
+
+  const undoLastExecution = async () => {
+    if (undoStack.length === 0) return;
+    setLoading(true);
+    const snapshot = undoStack[undoStack.length - 1];
     try {
-      await axios.post('/api/execute', {
-        plan: pendingPlan,
+      await axios.post('/api/undo', {
+        snapshot,
         context: { owner, repo: selectedRepo }
       }, { headers: authHeaders });
-      setMessages(prev => [...prev, { role: 'bot', text: '✅ בוצע! השינויים נדחפו לגיטהאב.' }]);
-      setPendingPlan(null);
+      setUndoStack(prev => prev.slice(0, -1));
+      setMessages(prev => [...prev, { role: 'bot', text: '↩️ הגרסה הקודמת שוחזרה בהצלחה.' }]);
     } catch (e) {
-      setMessages(prev => [...prev, { role: 'bot', text: `❌ שגיאה בביצוע: ${e.message}` }]);
+      setMessages(prev => [...prev, { role: 'bot', text: `❌ שגיאת ביטול: ${e.response?.data?.error || e.message}` }]);
     }
     setLoading(false);
   };
@@ -221,8 +344,9 @@ export function useChat({ aiKey, githubToken, owner, selectedRepo, responseLengt
 
   return {
     messages, setMessages, loading, pendingPlan, contextFiles,
+    undoStack,
     clearSession, toggleContextFile, compressSession,
-    sendMessage, answerAsk, executePlan, fetchPreview,
+    sendMessage, answerAsk, executePlan, undoLastExecution, fetchPreview,
     agentState,
     showPreview, setShowPreview,
     previewData, previewLoading,
