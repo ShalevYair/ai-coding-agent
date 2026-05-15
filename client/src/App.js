@@ -294,7 +294,7 @@ function App() {
           toggleContextFile={chat.toggleContextFile}
           allFiles={projectData.mapData?.files ? Object.keys(projectData.mapData.files) : []}
           selectedRepo={selectedRepo}
-          onFileClick={handleOpenFileForEdit} {/* העברת הפונקציה handleOpenFileForEdit כפרופ */}
+          onFileClick={handleOpenFileForEdit}
           onClose={() => setShowContextFiles(false)}
         />
       )}
