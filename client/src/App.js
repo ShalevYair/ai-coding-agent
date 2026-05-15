@@ -15,7 +15,7 @@ import { PreviewModal } from './components/modals/PreviewModal';
 import { SaveChatModal } from './components/modals/SaveChatModal';
 import { LoadChatModal } from './components/modals/LoadChatModal';
 import { ContextFilesModal } from './components/modals/ContextFilesModal';
-import { FileContentModal } from './components/modals/FileContentModal'; // ייבוא FileContentModal
+import FileContentModal from './components/modals/FileContentModal';
 
 import { RESPONSE_LENGTHS, AGENT_MODES, MEMORY_MODES, INITIAL_MESSAGE } from './utils/constants';
 
