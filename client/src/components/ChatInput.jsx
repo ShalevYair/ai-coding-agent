@@ -4,7 +4,7 @@ import { Send, X } from 'lucide-react';
 const LINE_HEIGHT = 24;
 const MAX_LINES = 6;
 
-export function ChatInput({ loading, sendMessage, contextFiles, toggleContextFile, fontSize }) {
+export function ChatInput({ loading, sendMessage, contextFiles, toggleContextFile, fontSize, agentState }) {
   const [inputText, setInputText] = useState('');
   const textareaRef = useRef(null);
 
@@ -23,11 +23,12 @@ export function ChatInput({ loading, sendMessage, contextFiles, toggleContextFil
   };
 
   const handleSend = () => {
-    if (!inputText.trim() || loading) return;
+    if (loading) return;
+    // Allow empty send when continuing an agent refinement step
+    if (!inputText.trim() && !agentState) return;
     const text = inputText;
     setInputText('');
     sendMessage(text);
-    // Reset height
     const ta = textareaRef.current;
     if (ta) { ta.style.height = LINE_HEIGHT + 'px'; ta.style.overflowY = 'hidden'; }
   };
@@ -70,7 +71,7 @@ export function ChatInput({ loading, sendMessage, contextFiles, toggleContextFil
           value={inputText}
           onChange={handleChange}
           onKeyDown={handleKeyDown}
-          placeholder="מה נבנה עכשיו? (Shift+Enter לשורה חדשה)"
+          placeholder={agentState ? 'כתוב מה לשנות בפרומט, או השאר ריק לאישור' : 'מה נבנה עכשיו? (Shift+Enter לשורה חדשה)'}
           rows={1}
           style={{
             flex: 1, padding: '10px 12px', borderRadius: '10px',
@@ -84,9 +85,16 @@ export function ChatInput({ loading, sendMessage, contextFiles, toggleContextFil
         <button onClick={handleSend} disabled={loading} style={{
           background: loading ? '#94a3b8' : '#3b82f6', color: '#fff',
           border: 'none', padding: '10px 12px', borderRadius: '10px',
-          cursor: loading ? 'not-allowed' : 'pointer', flexShrink: 0
+          cursor: loading ? 'not-allowed' : 'pointer', flexShrink: 0,
+          display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '1px',
+          minWidth: '42px'
         }}>
-          <Send size={18} />
+          <Send size={16} />
+          {agentState && (
+            <span style={{ fontSize: '9px', lineHeight: 1, fontWeight: '700' }}>
+              {agentState.step + 1}/{agentState.totalSteps}
+            </span>
+          )}
         </button>
       </div>
     </>
