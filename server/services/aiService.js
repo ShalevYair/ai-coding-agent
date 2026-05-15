@@ -17,17 +17,32 @@ class AIService {
         long:   'ענה בצורה מפורטת ומקיפה עם הסברים מלאים ככל הנדרש.'
       }[responseLength] || 'ענה ב-1-2 משפטים.';
 
-      const systemInstruction = `You are an AI CODING AGENT that manages a GitHub repository on behalf of the user.
-You have DIRECT ACCESS to read, create, and modify files in the repository via the GitHub API.
+      const systemInstruction = `You are an AI CODING AGENT — the equivalent of Claude Code — operating in a full development cycle on a live GitHub repository.
+You work DIRECTLY on GitHub files via the API. There is no local machine, no terminal, no npm/build step you can run. Every plan you produce becomes a GitHub commit.
 
 ACTIVE REPOSITORY: ${context?.owner}/${context?.repo}
 FILES CURRENTLY IN THE REPO: ${fileListString}
 
+═══════════════════════════════════════
+YOUR DEVELOPMENT CYCLE:
+═══════════════════════════════════════
+1. UNDERSTAND — Read the user's request. Relevant file contents are injected into your context automatically.
+2. PLAN — Design a precise implementation: which files to create or edit, and exactly what changes to make.
+3. EXECUTE — Your plan is sent to an AI code-writer and each step is committed to GitHub.
+4. VERIFY — After execution the user sees the result. If something looks wrong, produce a corrected plan.
+5. FIX — The system supports automatic retries (up to the user's configured limit) if a push fails.
+
+IMPORTANT CONSTRAINTS:
+- You CANNOT run code, execute tests, or check build errors — only read and write files
+- When editing, always describe changes relative to the existing code (add after X, replace Y with Z, remove function Z)
+- Prefer small focused changes over full rewrites unless a rewrite is explicitly requested
+- If you need to read a file that isn't in context, ask the user to pin it as a context file
+
 YOUR CAPABILITIES:
-- Read any file in the repository (content is provided to you in context)
+- Read any file (content provided in context when mentioned or pinned)
 - Create new files by including them in a plan
 - Modify existing files by including them in a plan
-- All file changes are committed directly to GitHub — no local environment
+- Chain multiple related changes into one multi-step plan
 
 RESPONSE LANGUAGE: Always respond in Hebrew (unless the user writes in another language). Code stays in English.
 RESPONSE LENGTH: ${lengthGuide}
@@ -41,49 +56,50 @@ You MUST provide a structured plan using EXACTLY this format (triple brackets [[
 [
   {
     "id": 1,
-    "description": "Precise instruction for the AI code writer. Describe exactly what to add, change, or create in this file.",
+    "description": "Precise instruction for the AI code writer. Must be SELF-CONTAINED: include the function name to modify, exact strings to add/remove, and enough surrounding context to locate the change unambiguously.",
     "affectedFiles": ["path/to/file.js"]
   },
   {
     "id": 2,
-    "description": "Another specific task description",
+    "description": "Another specific task — each step goes to a separate AI writer, so it must stand alone.",
     "affectedFiles": ["path/to/other/file.js"]
   }
 ]
 ]]]
 
 PLAN RULES:
-- File paths MUST be relative to the repository root: e.g. "client/src/App.js", "api/index.js", "server/services/x.js"
-- Each "description" is sent word-for-word to an AI code writer — be specific, unambiguous, and complete
-- For new files: describe the entire content and purpose of the file
-- For edits: describe exactly what to add, change, or remove — reference function names, variable names, etc.
-- Do NOT include "project_map.json" in plans — it updates automatically after every execution
-- Multiple files in one action only when they need the exact same change
-- After providing the plan, the user must confirm before any code is executed
+- File paths MUST be relative to the repo root: e.g. "client/src/App.js", "api/index.js", "server/services/x.js"
+- Each "description" is passed verbatim to a separate AI code writer — make it specific, unambiguous, and complete
+- For new files: describe the full structure, exports, and purpose of the file
+- For edits: state exactly what to add, change, or remove — include function names, variable names, and line context
+- Do NOT include "project_map.json" — it updates automatically after every execution
+- One file per plan step (unless multiple files need the exact same identical change)
+- The user must confirm the plan before any code is executed
 
-IF NO FILE CHANGES NEEDED: Just answer conversationally. No plan required.
+IF NO FILE CHANGES NEEDED: Just answer conversationally. No plan format required.
 
 ═══════════════════════════════════════
 WHEN YOU ARE UNSURE WHICH FILE TO EDIT:
 ═══════════════════════════════════════
-If the user's request involves code changes but you cannot confidently determine WHICH FILE(S) to edit,
-do NOT guess. Instead, ask the user by using this exact format:
+If the request involves code changes but you cannot confidently identify which file(s) to edit, do NOT guess.
+Ask using this exact format:
 
 [[[ASK]]]
 {
-  "question": "שאלה קצרה בעברית — למה אתה צריך הבהרה",
+  "question": "שאלה קצרה בעברית — מה צריך הבהרה",
   "options": ["file/path/option1.js", "file/path/option2.js", "אחר (ציין בעצמך)"]
 }
 [[[/ASK]]]
 
-WHEN TO USE ASK:
-- The request is vague and could apply to multiple files (e.g., "שנה את הצבע" without specifying where)
-- You see 2+ plausible files and genuinely don't know which one to edit
-- A new feature could go in several reasonable locations
+USE ASK WHEN:
+- The request is vague and could apply to multiple files ("שנה את הצבע" — where exactly?)
+- You see 2+ equally plausible files and genuinely cannot choose
+- A new feature has several reasonable homes in the codebase
 
-WHEN NOT TO USE ASK:
-- The correct file is obvious from context or file name (e.g., "שנה את כותרת הדף" → clearly index.html or App.js)
-- The user already specified a file name`;
+DO NOT USE ASK WHEN:
+- The correct file is obvious from context or naming ("שנה את כותרת הדף" → App.js or index.html)
+- The user already named the file
+- You can make a confident inference from the project structure`;
 
       const contents = history.map(msg => ({
         role: msg.role === 'user' ? 'user' : 'model',
@@ -179,6 +195,44 @@ Return ONLY the description text, nothing else.`;
       return result.response.text().trim();
     } catch (e) {
       return '';
+    }
+  }
+
+  async generateGeminiMd(repoName, fileList, keyFilesContent) {
+    try {
+      const prompt = `You are analyzing a GitHub repository named "${repoName}".
+Based on the file list and key file contents below, create a comprehensive Gemini.md file.
+This file is the AI coding agent's guide to understanding the codebase — it is loaded into context on every request.
+
+FILE LIST:
+${fileList.join('\n')}
+
+KEY FILE CONTENTS:
+${keyFilesContent}
+
+Write the Gemini.md file with the following sections:
+# ${repoName} — מדריך לסוכן AI
+
+## תיאור הפרויקט
+(מה הפרויקט עושה, מטרתו, קהל היעד)
+
+## טכנולוגיות
+(שפות, frameworks, ספריות עיקריות)
+
+## ארכיטקטורה
+(תיאור מבנה הספריות והקבצים הראשיים)
+
+## קבצים חשובים
+(לכל קובץ משמעותי — נתיב + תפקיד)
+
+## כללי פיתוח
+(דפוסי קוד, מוסכמות, דברים שחשוב לדעת לפני עריכה)
+
+Write in Hebrew. Keep code, file paths and technical terms in English. Be specific and practical — this is read by an AI, not a human.`;
+      const result = await this.model.generateContent(prompt);
+      return result.response.text().trim();
+    } catch (e) {
+      throw new Error(`generateGeminiMd failed: ${e.message}`);
     }
   }
 }

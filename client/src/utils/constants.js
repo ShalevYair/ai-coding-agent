@@ -16,6 +16,8 @@ export const MEMORY_MODES = {
   goldfish: { icon: '🐟', label: 'זיכרון מינימלי (3)',   messages: 3,  useContext: false, next: 'cat'      }
 };
 
+export const MAX_RETRIES_CYCLE = { 3: 5, 5: 1, 1: 3 };
+
 export const INITIAL_MESSAGE = { role: 'bot', text: 'היי! אני מוכן. מה בונים היום?' };
 
 export function loadSavedMessages() {

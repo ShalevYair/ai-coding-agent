@@ -22,7 +22,7 @@ export function MessageBubble({ message: m, fontSize, executePlan, fetchPreview,
           </div>
           <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
             {(m.askData.options || []).map((opt, idx) => (
-              <button key={idx} onClick={() => answerAsk(opt, currentMessages)} style={{
+              <button key={idx} onClick={() => answerAsk(opt, currentMessages, m.askData)} style={{
                 padding: '7px 10px', background: '#fff', color: '#1e293b',
                 border: '1px solid #cbd5e1', borderRadius: '8px',
                 cursor: 'pointer', fontSize: '12px', textAlign: 'right',

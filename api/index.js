@@ -249,6 +249,15 @@ app.post('/api/execute', executeLimiter, async (req, res) => {
       return res.status(400).json({ error: "חסר owner או repo בקונטקסט." });
     }
 
+    // Capture snapshot of all affected files before making any changes (enables undo)
+    const snapshot = [];
+    for (const action of plan) {
+      for (const file of action.affectedFiles) {
+        const content = await github.getFile(context.owner, context.repo, file);
+        snapshot.push({ path: file, content });
+      }
+    }
+
     for (const action of plan) {
       for (const file of action.affectedFiles) {
         const currentContent = await github.getFile(context.owner, context.repo, file);
@@ -266,9 +275,85 @@ app.post('/api/execute', executeLimiter, async (req, res) => {
       console.error("project_map update failed:", e.message);
     }
 
-    res.json({ success: true });
+    res.json({ success: true, snapshot });
   } catch (e) {
     console.error("Execution Error:", e.message);
+    res.status(500).json({ error: e.message });
+  }
+});
+
+// Undo: restore files from a snapshot captured before the last execution
+app.post('/api/undo', executeLimiter, async (req, res) => {
+  try {
+    const { github } = getServices(req);
+    const { snapshot, context } = req.body;
+
+    if (!Array.isArray(snapshot) || snapshot.length === 0) {
+      return res.status(400).json({ error: "snapshot חסר או ריק." });
+    }
+    if (!context?.owner || !context?.repo) {
+      return res.status(400).json({ error: "חסר owner או repo בקונטקסט." });
+    }
+
+    for (const { path, content } of snapshot) {
+      await github.updateFile(context.owner, context.repo, path, content, 'Undo: restore previous version');
+    }
+
+    res.json({ success: true });
+  } catch (e) {
+    console.error("Undo Error:", e.message);
+    res.status(500).json({ error: e.message });
+  }
+});
+
+// Scan all repo files and regenerate project_map.json
+app.post('/api/scan-project', executeLimiter, async (req, res) => {
+  try {
+    const { github, ai } = getServices(req);
+    const { context } = req.body;
+
+    if (!context?.owner || !context?.repo) {
+      return res.status(400).json({ error: "חסר owner או repo." });
+    }
+
+    const allFiles = await github.getAiMap(context.owner, context.repo);
+    await updateProjectMap(github, ai, context.owner, context.repo, allFiles, allFiles);
+
+    res.json({ success: true });
+  } catch (e) {
+    console.error("Scan Error:", e.message);
+    res.status(500).json({ error: e.message });
+  }
+});
+
+// Analyze repo and create Gemini.md
+app.post('/api/create-gemini-md', executeLimiter, async (req, res) => {
+  try {
+    const { github, ai } = getServices(req);
+    const { context } = req.body;
+
+    if (!context?.owner || !context?.repo) {
+      return res.status(400).json({ error: "חסר owner או repo." });
+    }
+
+    const allFiles = await github.getAiMap(context.owner, context.repo);
+
+    // Read a representative sample of key files to give the AI enough context
+    const KEY_PATTERNS = ['package.json', 'README.md', 'App.js', 'app.js', 'index.js', 'main.py', 'app.py'];
+    const keyFiles = allFiles.filter(f => KEY_PATTERNS.some(p => f.endsWith(p))).slice(0, 6);
+
+    let keyFilesContent = '';
+    for (const f of keyFiles) {
+      const content = await github.getFile(context.owner, context.repo, f);
+      if (content) keyFilesContent += `\n--- ${f} ---\n${content.substring(0, 2000)}\n`;
+    }
+
+    const geminiMdContent = await ai.generateGeminiMd(context.repo, allFiles, keyFilesContent);
+    await github.updateFile(context.owner, context.repo, 'Gemini.md', geminiMdContent, 'Create Gemini.md');
+
+    res.json({ success: true });
+  } catch (e) {
+    console.error("Create Gemini.md Error:", e.message);
     res.status(500).json({ error: e.message });
   }
 });
