@@ -15,6 +15,7 @@ import { PreviewModal } from './components/modals/PreviewModal';
 import { SaveChatModal } from './components/modals/SaveChatModal';
 import { LoadChatModal } from './components/modals/LoadChatModal';
 import { ContextFilesModal } from './components/modals/ContextFilesModal';
+import { FileContentModal } from './components/modals/FileContentModal'; // ייבוא FileContentModal
 
 import { RESPONSE_LENGTHS, AGENT_MODES, MEMORY_MODES, INITIAL_MESSAGE } from './utils/constants';
 
@@ -35,6 +36,10 @@ function App() {
   const [agentMode, setAgentMode]         = useState(localStorage.getItem('agent_mode') || 'dove');
   const [memoryMode, setMemoryMode]       = useState(localStorage.getItem('memory_mode') || 'cat');
   const [showContextFiles, setShowContextFiles] = useState(false);
+  // מצבי קובץ לעריכה
+  const [isFileContentModalOpen, setIsFileContentModalOpen] = useState(false);
+  const [selectedFilePath, setSelectedFilePath] = useState('');
+  const [selectedFileContent, setSelectedFileContent] = useState('');
 
   // ── Persist settings ───────────────────────────────────────────────────────
   useEffect(() => {
@@ -77,6 +82,35 @@ function App() {
 
   // ── Saved chats ────────────────────────────────────────────────────────────
   const savedChats = useSavedChats({ aiKey, githubToken, owner, selectedRepo });
+
+  // ── File editing logic ─────────────────────────────────────────────────────
+  const handleOpenFileForEdit = async (filePath) => {
+    try {
+      const content = await chat.fetchFileContent(filePath);
+      setSelectedFilePath(filePath);
+      setSelectedFileContent(content);
+      setIsFileContentModalOpen(true);
+    } catch (error) {
+      console.error('Error fetching file content for edit:', error);
+      // ייתכן שתרצה להוסיף הודעת שגיאה למשתמש
+    }
+  };
+
+  const handleSaveEditedFile = async (filePath, newContent) => {
+    try {
+      const plan = {
+        action: 'edit_file',
+        path: filePath,
+        content: newContent,
+      };
+      await chat.handleExecutePlan(plan);
+      setIsFileContentModalOpen(false); // סגור את המודל לאחר השמירה
+      // ייתכן שתרצה להוסיף הודעת הצלחה או לרענן נתונים רלוונטיים
+    } catch (error) {
+      console.error('Error saving edited file:', error);
+      // ייתכן שתרצה להוסיף הודעת שגיאה למשתמש
+    }
+  };
 
   // Auto-save current chat as summary, then clear session
   const autoSaveAndClear = async () => {
@@ -260,7 +294,18 @@ function App() {
           toggleContextFile={chat.toggleContextFile}
           allFiles={projectData.mapData?.files ? Object.keys(projectData.mapData.files) : []}
           selectedRepo={selectedRepo}
+          onFileClick={handleOpenFileForEdit} {/* העברת הפונקציה handleOpenFileForEdit כפרופ */}
           onClose={() => setShowContextFiles(false)}
+        />
+      )}
+
+      {isFileContentModalOpen && (
+        <FileContentModal
+          isOpen={isFileContentModalOpen}
+          onClose={() => setIsFileContentModalOpen(false)}
+          filePath={selectedFilePath}
+          fileContent={selectedFileContent}
+          onSave={handleSaveEditedFile}
         />
       )}
     </div>
