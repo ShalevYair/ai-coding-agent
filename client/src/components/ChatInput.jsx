@@ -3,6 +3,7 @@ import { Send, X } from 'lucide-react';
 
 const LINE_HEIGHT = 24;
 const MAX_LINES = 6;
+const INITIAL_LINES = 2; // New constant for initial lines
 
 export function ChatInput({ loading, sendMessage, contextFiles, toggleContextFile, fontSize, agentState }) {
   const [inputText, setInputText] = useState('');
@@ -30,7 +31,7 @@ export function ChatInput({ loading, sendMessage, contextFiles, toggleContextFil
     setInputText('');
     sendMessage(text);
     const ta = textareaRef.current;
-    if (ta) { ta.style.height = LINE_HEIGHT + 'px'; ta.style.overflowY = 'hidden'; }
+    if (ta) { ta.style.height = LINE_HEIGHT * INITIAL_LINES + 'px'; ta.style.overflowY = 'hidden'; } // Reset to initial height
   };
 
   const handleKeyDown = (e) => {
@@ -72,13 +73,13 @@ export function ChatInput({ loading, sendMessage, contextFiles, toggleContextFil
           onChange={handleChange}
           onKeyDown={handleKeyDown}
           placeholder={agentState ? 'כתוב מה לשנות בפרומט, או השאר ריק לאישור' : 'מה נבנה עכשיו? (Shift+Enter לשורה חדשה)'}
-          rows={1}
+          rows={INITIAL_LINES} {/* Updated rows */}
           style={{
             flex: 1, padding: '10px 12px', borderRadius: '10px',
             border: '1px solid #e2e8f0', outline: 'none',
             fontSize: `${fontSize}px`, fontFamily: 'Rubik, sans-serif',
             resize: 'none', lineHeight: `${LINE_HEIGHT}px`,
-            height: `${LINE_HEIGHT}px`,
+            height: `${LINE_HEIGHT * INITIAL_LINES}px`, // Updated initial height
             overflowY: 'hidden', direction: 'rtl'
           }}
         />
