@@ -18,10 +18,10 @@
     "client/package.json": "ניהול תלויות של ה-React App.",
     "client/public/index.html": "זהו קובץ ה-HTML הראשי של הפרויקט, המשמש כנקודת הכניסה לאפליקציית הלקוח. הוא מגדיר את מבנה הדף הבסיסי, כולל הגדרות שפה, גופנים וסגנונות גלובליים, ומכיל את האלמנט (`<div id=\"root\">`) אליו נטען כל תוכן היישום.",
     "client/src/index.js": "נקודת הכניסה של ה-React לתוך ה-DOM.",
-    "client/src/App.js": "קובץ זה הוא רכיב ה-React הראשי (App) של היישום. הוא מנהל את מצב היישום הגלובלי, הגדרות המשתמש, ומשלב פונקציונליות צ'אט עם נתוני פרויקט באמצעות מגוון רכיבי ממשק משתמש וחלונות קופצים.",
+    "client/src/App.js": "קובץ זה הוא רכיב ה-React הראשי של יישום הלקוח, המרכז את ממשק הצ'אט, הגדרות המשתמש וחלונות מודאליים שונים תוך שילוב לוגיקות מותאמות אישית לפונקציונליות ליבה.",
     "server/package.json": "",
     "server/services/aiService.js": "",
-    "server/services/githubService.js": "",
+    "server/services/githubService.js": "קובץ זה מהווה שירות המאפשר אינטראקציה עם GitHub API. הוא מספק פונקציות לקריאה, עדכון ויצירת קבצים, סריקת רפוזיטורים וביצוע תוכניות שינויים, ככל הנראה בהקשר של סוכן AI.",
     "CLAUDE.md": "",
     "Saved_Chats.json": "",
     "client/src/components/ChatInput.jsx": "קובץ זה מגדיר את קומפוננטת ה-React `ChatInput`, המספקת שדה קלט טקסט דינמי לשליחת הודעות צ'אט. היא תומכת בשינוי גודל אוטומטי של תיבת הטקסט ומציגה קבצי הקשר מצורפים.",
@@ -43,6 +43,7 @@
     "client/src/utils/mapUtils.js": "",
     "client/src/utils/theme.js": "",
     "client/src/components/SideMenu.jsx": "",
-    "client/src/components/modals/ContextFilesModal.jsx": ""
+    "client/src/components/modals/ContextFilesModal.jsx": "קובץ זה מגדיר קומפוננטת מודל (ContextFilesModal) המאפשרת למשתמשים לנהל קבצי הקשר. המודל מציג קבצי הקשר פעילים ומאפשר חיפוש והוספה של קבצים חדשים מתוך רשימת כל הקבצים הזמינים.",
+    "client/src/components/modals/FileContentModal.jsx": "קובץ זה מגדיר קומפוננטת React בשם `FileContentModal`, המשמשת כחלון קופץ לעריכה והצגה של תוכן קבצים. היא מאפשרת למשתמשים לצפות בטקסט של קובץ, לערוך אותו ולשמור את השינויים."
   }
 }
