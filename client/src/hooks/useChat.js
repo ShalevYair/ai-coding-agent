@@ -53,7 +53,7 @@ export function useChat({ aiKey, githubToken, owner, selectedRepo, responseLengt
     if (checkedReposRef.current.has(key)) return;
     checkedReposRef.current.add(key);
     checkMissingFiles(owner, selectedRepo);
-  }, [selectedRepo, owner, aiKey, githubToken]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [selectedRepo, owner, aiKey, githubToken]);
 
   const clearSession = () => {
     setMessages([INITIAL_MESSAGE]);
