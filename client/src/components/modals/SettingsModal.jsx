@@ -2,7 +2,7 @@ import React from 'react';
 import { X } from 'lucide-react';
 import { modalOverlay, modalCard, labelStyle, modalInputStyle } from '../../utils/theme';
 
-export function SettingsModal({ aiKey, setAiKey, githubToken, setGithubToken, owner, selectedRepo, setSelectedRepo, repoList, onClose }) {
+export function SettingsModal({ aiKey, setAiKey, githubToken, setGithubToken, owner, onClose }) {
   return (
     <div style={modalOverlay} onClick={onClose}>
       <div style={modalCard()} onClick={e => e.stopPropagation()}>
@@ -19,16 +19,14 @@ export function SettingsModal({ aiKey, setAiKey, githubToken, setGithubToken, ow
             style={modalInputStyle} placeholder="הדבק טוקן גיטהאב..." />
 
           {owner && (
-            <div style={{ fontSize: '13px', marginBottom: '13px', color: '#10b981', fontWeight: '600' }}>
+            <div style={{ fontSize: '13px', marginBottom: '16px', color: '#10b981', fontWeight: '600' }}>
               ✅ מחובר כ: {owner}
             </div>
           )}
 
-          <label style={labelStyle}>בחר פרויקט פעיל</label>
-          <select value={selectedRepo} onChange={e => setSelectedRepo(e.target.value)} style={modalInputStyle}>
-            {repoList.length === 0 && <option>ממתין לטוקן...</option>}
-            {repoList.map(r => <option key={r} value={r}>{r}</option>)}
-          </select>
+          <p style={{ fontSize: '12px', color: '#94a3b8', marginBottom: '16px' }}>
+            לבחירת פרויקט — השתמש בכפתור 📁 בתפריט הצד.
+          </p>
 
           <button onClick={onClose} style={{
             width: '100%', padding: '13px', background: '#3b82f6', color: '#fff',

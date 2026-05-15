@@ -151,6 +151,22 @@ ${convoText.substring(0, 2000)}`;
     }
   }
 
+  async refinePrompt(prompt, context) {
+    try {
+      const repo = context?.repo || '';
+      const instruction = `You are a prompt-engineering assistant for an AI coding agent working on the repository "${repo}".
+The user wrote the following request. Rewrite it into a clearer, more specific, and more actionable prompt for a coding agent.
+Keep the same intent and language (Hebrew if the user wrote in Hebrew). Return ONLY the improved prompt text — no explanations, no labels.
+
+Original prompt:
+${prompt}`;
+      const result = await this.model.generateContent(instruction);
+      return result.response.text().trim();
+    } catch (e) {
+      return prompt;
+    }
+  }
+
   async describeFile(filePath, content) {
     try {
       const prompt = `File path: ${filePath}

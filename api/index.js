@@ -361,6 +361,19 @@ app.post('/api/save-chat', executeLimiter, async (req, res) => {
   }
 });
 
+// Refine a user prompt (used by raven/owl agent modes)
+app.post('/api/refine-prompt', chatLimiter, async (req, res) => {
+  try {
+    const { ai } = getServices(req);
+    const { prompt, context } = req.body;
+    if (!prompt) return res.status(400).json({ error: 'prompt required' });
+    const refinedPrompt = await ai.refinePrompt(prompt, context);
+    res.json({ refinedPrompt });
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
 // Load list of saved chats from the active repo
 app.get('/api/saved-chats', async (req, res) => {
   try {

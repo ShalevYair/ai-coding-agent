@@ -48,8 +48,21 @@ export function useProjectData({ githubToken, owner, selectedRepo }) {
     setSelectedMapFile(null);
   };
 
+  // Load map data silently (no modal) — used by context files modal
+  const ensureMapLoaded = async () => {
+    if (mapData) return;
+    try {
+      const res = await axios.get('/api/file', {
+        params: { owner, repo: selectedRepo, path: 'project_map.json' },
+        headers: { 'x-github-token': githubToken }
+      });
+      setMapData(parseMapData(res.data.content));
+    } catch (e) { /* project_map.json may not exist */ }
+  };
+
   return {
     showReadme, setShowReadme, readmeContent, readmeLoading, fetchReadme,
-    showMap, closeMap, mapData, mapLoading, selectedMapFile, setSelectedMapFile, fetchProjectMap
+    showMap, closeMap, mapData, mapLoading, selectedMapFile, setSelectedMapFile,
+    fetchProjectMap, ensureMapLoaded
   };
 }

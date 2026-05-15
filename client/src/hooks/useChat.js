@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import axios from 'axios';
-import { INITIAL_MESSAGE, loadSavedMessages } from '../utils/constants';
+import { INITIAL_MESSAGE, loadSavedMessages, AGENT_MODES, MEMORY_MODES } from '../utils/constants';
 
 function parseAIResponse(aiRes) {
   const askMatch = aiRes.match(/\[\[\[ASK\]\]\]([\s\S]*?)\[\[\[\/ASK\]\]\]/);
@@ -23,11 +23,14 @@ function parseAIResponse(aiRes) {
   return { type: 'text', text: aiRes };
 }
 
-export function useChat({ aiKey, githubToken, owner, selectedRepo, responseLength }) {
+export function useChat({ aiKey, githubToken, owner, selectedRepo, responseLength, agentMode = 'dove', memoryMode = 'cat' }) {
   const [messages, setMessages] = useState(loadSavedMessages);
   const [loading, setLoading] = useState(false);
   const [pendingPlan, setPendingPlan] = useState(null);
   const [contextFiles, setContextFiles] = useState([]);
+
+  // Agent multi-step state: null | { step: number, totalSteps: number, refinedPrompt: string }
+  const [agentState, setAgentState] = useState(null);
 
   const [showPreview, setShowPreview] = useState(false);
   const [previewData, setPreviewData] = useState([]);
@@ -43,6 +46,7 @@ export function useChat({ aiKey, githubToken, owner, selectedRepo, responseLengt
     setMessages([INITIAL_MESSAGE]);
     setPendingPlan(null);
     setContextFiles([]);
+    setAgentState(null);
   };
 
   const toggleContextFile = (path) =>
@@ -61,14 +65,26 @@ export function useChat({ aiKey, githubToken, owner, selectedRepo, responseLengt
     }
   };
 
+  // Slice history according to memoryMode
+  const _sliceHistory = (history) => {
+    const cfg = MEMORY_MODES[memoryMode] || MEMORY_MODES.cat;
+    return history.slice(-cfg.messages);
+  };
+
+  // Effective context files: goldfish mode ignores pinned context
+  const _effectiveContextFiles = () => {
+    const cfg = MEMORY_MODES[memoryMode] || MEMORY_MODES.cat;
+    return cfg.useContext ? contextFiles : [];
+  };
+
   const _doChat = async (prompt, historySnapshot) => {
     try {
       const res = await axios.post('/api/chat', {
         prompt,
-        history: historySnapshot,
+        history: _sliceHistory(historySnapshot),
         context: { owner, repo: selectedRepo },
         responseLength,
-        contextFiles
+        contextFiles: _effectiveContextFiles()
       }, { headers: authHeaders });
       _applyResponse(parseAIResponse(res.data.response));
     } catch (e) {
@@ -79,11 +95,75 @@ export function useChat({ aiKey, githubToken, owner, selectedRepo, responseLengt
     }
   };
 
+  // Refine a prompt via the backend (for raven/owl agent modes)
+  const _doRefine = async (prompt, historySnapshot) => {
+    try {
+      const res = await axios.post('/api/refine-prompt', {
+        prompt,
+        history: _sliceHistory(historySnapshot),
+        context: { owner, repo: selectedRepo },
+      }, { headers: authHeaders });
+      return res.data.refinedPrompt || prompt;
+    } catch (e) {
+      return prompt;
+    }
+  };
+
   const sendMessage = async (text, currentMessages) => {
-    if (!text.trim() || loading) return;
+    if (!text.trim() && !agentState) return;
+    if (loading) return;
+
+    const totalSteps = AGENT_MODES[agentMode]?.totalSteps || 1;
+
+    // Step continuation: user accepted/modified refined prompt
+    if (agentState) {
+      const userInput = text.trim();
+      const basePrompt = agentState.refinedPrompt;
+      // Combine refined prompt with user's modifications
+      const combinedPrompt = userInput
+        ? `${basePrompt}\n\nשינויים למשתמש: ${userInput}`
+        : basePrompt;
+
+      const displayText = userInput || '(אשרתי את הפרומט המוצע)';
+      setMessages(prev => [...prev, { role: 'user', text: displayText }]);
+      setLoading(true);
+
+      const nextStep = agentState.step + 1;
+
+      if (nextStep < totalSteps) {
+        // Another refinement step (owl step 2)
+        const refined2 = await _doRefine(combinedPrompt, currentMessages);
+        setMessages(prev => [...prev, {
+          role: 'bot',
+          text: `✨ פרומט מעודכן (שלב ${nextStep}/${totalSteps}):\n\n${refined2}`
+        }]);
+        setAgentState({ step: nextStep, totalSteps, refinedPrompt: refined2 });
+        setLoading(false);
+      } else {
+        // Final step — send for real answer
+        setAgentState(null);
+        await _doChat(combinedPrompt, currentMessages);
+      }
+      return;
+    }
+
+    // Normal first send
     setMessages(prev => [...prev, { role: 'user', text }]);
     setLoading(true);
-    await _doChat(text, currentMessages);
+
+    if (totalSteps === 1) {
+      // Dove mode — direct answer
+      await _doChat(text, currentMessages);
+    } else {
+      // Raven/owl — first refine the prompt
+      const refined = await _doRefine(text, currentMessages);
+      setMessages(prev => [...prev, {
+        role: 'bot',
+        text: `✨ פרומט מוצע (שלב 1/${totalSteps}):\n\n${refined}`
+      }]);
+      setAgentState({ step: 1, totalSteps, refinedPrompt: refined });
+      setLoading(false);
+    }
   };
 
   const answerAsk = async (option, currentMessages) => {
@@ -143,6 +223,7 @@ export function useChat({ aiKey, githubToken, owner, selectedRepo, responseLengt
     messages, setMessages, loading, pendingPlan, contextFiles,
     clearSession, toggleContextFile, compressSession,
     sendMessage, answerAsk, executePlan, fetchPreview,
+    agentState,
     showPreview, setShowPreview,
     previewData, previewLoading,
     previewFileIdx, setPreviewFileIdx,

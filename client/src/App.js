@@ -5,7 +5,7 @@ import { useChat } from './hooks/useChat';
 import { useProjectData } from './hooks/useProjectData';
 import { useSavedChats } from './hooks/useSavedChats';
 
-import { Header } from './components/Header';
+import { SideMenu } from './components/SideMenu';
 import { ChatWindow } from './components/ChatWindow';
 import { ChatInput } from './components/ChatInput';
 import { SettingsModal } from './components/modals/SettingsModal';
@@ -14,19 +14,27 @@ import { ProjectMapModal } from './components/modals/ProjectMapModal';
 import { PreviewModal } from './components/modals/PreviewModal';
 import { SaveChatModal } from './components/modals/SaveChatModal';
 import { LoadChatModal } from './components/modals/LoadChatModal';
+import { ContextFilesModal } from './components/modals/ContextFilesModal';
 
-import { RESPONSE_LENGTHS, INITIAL_MESSAGE } from './utils/constants';
+import { RESPONSE_LENGTHS, AGENT_MODES, MEMORY_MODES, INITIAL_MESSAGE } from './utils/constants';
 
 function App() {
   // ── Settings state ─────────────────────────────────────────────────────────
-  const [showSettings, setShowSettings] = useState(false);
-  const [aiKey, setAiKey]               = useState(localStorage.getItem('ai_key')       || '');
-  const [githubToken, setGithubToken]   = useState(localStorage.getItem('gh_token')     || '');
-  const [owner, setOwner]               = useState(localStorage.getItem('owner')        || '');
-  const [selectedRepo, setSelectedRepo] = useState(localStorage.getItem('selected_repo')|| '');
-  const [repoList, setRepoList]         = useState([]);
+  const [showSettings, setShowSettings]   = useState(false);
+  const [aiKey, setAiKey]                 = useState(localStorage.getItem('ai_key')        || '');
+  const [githubToken, setGithubToken]     = useState(localStorage.getItem('gh_token')      || '');
+  const [owner, setOwner]                 = useState(localStorage.getItem('owner')         || '');
+  const [selectedRepo, setSelectedRepo]   = useState(localStorage.getItem('selected_repo') || '');
+  const [repoList, setRepoList]           = useState([]);
   const [responseLength, setResponseLength] = useState(localStorage.getItem('response_length') || 'short');
-  const [fontSize, setFontSize]         = useState(parseInt(localStorage.getItem('font_size') || '14', 10));
+  const [fontSize, setFontSize]           = useState(parseInt(localStorage.getItem('font_size') || '14', 10));
+
+  // ── Side menu + new feature states ────────────────────────────────────────
+  const [sideMenuOpen, setSideMenuOpen]   = useState(false);
+  const [autoSave, setAutoSave]           = useState(localStorage.getItem('auto_save') !== 'false');
+  const [agentMode, setAgentMode]         = useState(localStorage.getItem('agent_mode') || 'dove');
+  const [memoryMode, setMemoryMode]       = useState(localStorage.getItem('memory_mode') || 'cat');
+  const [showContextFiles, setShowContextFiles] = useState(false);
 
   // ── Persist settings ───────────────────────────────────────────────────────
   useEffect(() => {
@@ -38,7 +46,10 @@ function App() {
   }, [aiKey, githubToken, owner, selectedRepo, repoList.length]);
 
   useEffect(() => { localStorage.setItem('response_length', responseLength); }, [responseLength]);
-  useEffect(() => { localStorage.setItem('font_size', fontSize); },           [fontSize]);
+  useEffect(() => { localStorage.setItem('font_size',       fontSize);        }, [fontSize]);
+  useEffect(() => { localStorage.setItem('auto_save',       autoSave);        }, [autoSave]);
+  useEffect(() => { localStorage.setItem('agent_mode',      agentMode);       }, [agentMode]);
+  useEffect(() => { localStorage.setItem('memory_mode',     memoryMode);      }, [memoryMode]);
 
   useEffect(() => {
     if (!aiKey || !githubToken || !selectedRepo) setShowSettings(true);
@@ -54,10 +65,12 @@ function App() {
   };
 
   const cycleResponseLength = () => setResponseLength(prev => RESPONSE_LENGTHS[prev].next);
-  const changeFontSize = (delta) => setFontSize(prev => Math.min(20, Math.max(11, prev + delta)));
+  const cycleAgentMode      = () => setAgentMode(prev => AGENT_MODES[prev].next);
+  const cycleMemoryMode     = () => setMemoryMode(prev => MEMORY_MODES[prev].next);
+  const changeFontSize      = (delta) => setFontSize(prev => Math.min(20, Math.max(11, prev + delta)));
 
   // ── Chat logic ─────────────────────────────────────────────────────────────
-  const chat = useChat({ aiKey, githubToken, owner, selectedRepo, responseLength });
+  const chat = useChat({ aiKey, githubToken, owner, selectedRepo, responseLength, agentMode, memoryMode });
 
   // ── Project data (README, project map) ────────────────────────────────────
   const projectData = useProjectData({ githubToken, owner, selectedRepo });
@@ -65,7 +78,19 @@ function App() {
   // ── Saved chats ────────────────────────────────────────────────────────────
   const savedChats = useSavedChats({ aiKey, githubToken, owner, selectedRepo });
 
-  const handleLoadChat = (chatEntry) => {
+  // Auto-save current chat as summary, then clear session
+  const autoSaveAndClear = async () => {
+    if (chat.messages.length > 1) {
+      await savedChats.saveChat(chat.messages, 'summary');
+    }
+    chat.clearSession();
+  };
+
+  const handleLoadChat = async (chatEntry) => {
+    // Auto-save before loading if enabled
+    if (autoSave && chat.messages.length > 1) {
+      await savedChats.saveChat(chat.messages, 'summary');
+    }
     if (chatEntry.type === 'summary') {
       const summaryMsg = { role: 'bot', text: `📂 שיחה טעונה — ${chatEntry.title}\n\n${chatEntry.content}` };
       chat.setMessages([INITIAL_MESSAGE, summaryMsg]);
@@ -79,49 +104,78 @@ function App() {
   return (
     <div style={{
       maxWidth: '600px', margin: '0 auto',
-      height: '100dvh', display: 'flex', flexDirection: 'column',
-      background: '#f1f5f9', overflow: 'hidden'
-    }} dir="rtl">
+      height: '100dvh', display: 'flex', flexDirection: 'row',
+      background: '#f1f5f9', overflow: 'hidden', direction: 'rtl'
+    }}>
 
-      <Header
-        selectedRepo={selectedRepo}
-        responseLength={responseLength}
-        cycleResponseLength={cycleResponseLength}
-        fontSize={fontSize}
-        changeFontSize={changeFontSize}
+      {/* Right sidebar */}
+      <SideMenu
+        isOpen={sideMenuOpen}
+        setIsOpen={setSideMenuOpen}
+        messages={chat.messages}
         clearSession={chat.clearSession}
         compressSession={chat.compressSession}
-        onOpenSave={savedChats.openSave}
         onOpenLoad={savedChats.openLoad}
-        fetchReadme={projectData.fetchReadme}
+        onOpenSave={savedChats.openSave}
+        autoSaveAndClear={autoSaveAndClear}
+        responseLength={responseLength}
+        cycleResponseLength={cycleResponseLength}
+        autoSave={autoSave}
+        toggleAutoSave={() => setAutoSave(p => !p)}
         fetchProjectMap={projectData.fetchProjectMap}
+        fetchReadme={projectData.fetchReadme}
         onOpenSettings={() => setShowSettings(true)}
-      />
-
-      <ChatWindow
-        messages={chat.messages}
-        loading={chat.loading}
         fontSize={fontSize}
-        executePlan={chat.executePlan}
-        fetchPreview={chat.fetchPreview}
-        answerAsk={chat.answerAsk}
+        changeFontSize={changeFontSize}
+        selectedRepo={selectedRepo}
+        setSelectedRepo={setSelectedRepo}
+        repoList={repoList}
+        agentMode={agentMode}
+        cycleAgentMode={cycleAgentMode}
+        memoryMode={memoryMode}
+        cycleMemoryMode={cycleMemoryMode}
+        onOpenContextFiles={async () => { await projectData.ensureMapLoaded(); setShowContextFiles(true); }}
       />
 
-      <ChatInput
-        loading={chat.loading}
-        sendMessage={(text) => chat.sendMessage(text, chat.messages)}
-        contextFiles={chat.contextFiles}
-        toggleContextFile={chat.toggleContextFile}
-        fontSize={fontSize}
-      />
+      {/* Left — chat area */}
+      <div style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden', minWidth: 0 }}>
 
+        {/* Mini header */}
+        <div style={{
+          padding: '10px 14px', background: '#fff',
+          borderBottom: '1px solid #e2e8f0', flexShrink: 0
+        }}>
+          <h1 style={{ fontSize: '15px', fontWeight: 'bold', margin: 0 }}>AI Coding Agent 🤖</h1>
+          <div style={{ fontSize: '11px', color: '#3b82f6', fontWeight: '600' }}>
+            {selectedRepo || 'בחר פרויקט בתפריט ←'}
+          </div>
+        </div>
+
+        <ChatWindow
+          messages={chat.messages}
+          loading={chat.loading}
+          fontSize={fontSize}
+          executePlan={chat.executePlan}
+          fetchPreview={chat.fetchPreview}
+          answerAsk={chat.answerAsk}
+        />
+
+        <ChatInput
+          loading={chat.loading}
+          sendMessage={(text) => chat.sendMessage(text, chat.messages)}
+          contextFiles={chat.contextFiles}
+          toggleContextFile={chat.toggleContextFile}
+          fontSize={fontSize}
+          agentState={chat.agentState}
+        />
+      </div>
+
+      {/* Modals */}
       {showSettings && (
         <SettingsModal
           aiKey={aiKey} setAiKey={setAiKey}
           githubToken={githubToken} setGithubToken={setGithubToken}
           owner={owner}
-          selectedRepo={selectedRepo} setSelectedRepo={setSelectedRepo}
-          repoList={repoList}
           onClose={() => setShowSettings(false)}
         />
       )}
@@ -176,6 +230,16 @@ function App() {
           loadListLoading={savedChats.loadListLoading}
           onLoad={handleLoadChat}
           onClose={() => savedChats.setShowLoadModal(false)}
+        />
+      )}
+
+      {showContextFiles && (
+        <ContextFilesModal
+          contextFiles={chat.contextFiles}
+          toggleContextFile={chat.toggleContextFile}
+          allFiles={projectData.mapData?.files ? Object.keys(projectData.mapData.files) : []}
+          selectedRepo={selectedRepo}
+          onClose={() => setShowContextFiles(false)}
         />
       )}
     </div>
