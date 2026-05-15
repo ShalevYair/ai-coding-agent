@@ -73,7 +73,7 @@ export function ChatInput({ loading, sendMessage, contextFiles, toggleContextFil
           onChange={handleChange}
           onKeyDown={handleKeyDown}
           placeholder={agentState ? 'כתוב מה לשנות בפרומט, או השאר ריק לאישור' : 'מה נבנה עכשיו? (Shift+Enter לשורה חדשה)'}
-          rows={INITIAL_LINES} {/* Updated rows */}
+          rows={INITIAL_LINES}
           style={{
             flex: 1, padding: '10px 12px', borderRadius: '10px',
             border: '1px solid #e2e8f0', outline: 'none',
