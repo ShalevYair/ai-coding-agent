@@ -13,28 +13,50 @@ npm run server       # רק Express
 Express app יחיד ב-Vercel serverless. כל ה-routes בקובץ אחד.
 - `getServices(req)` — יוצר AIService + GitHubService מה-headers
 - `compressHistory(history)` — מקצץ היסטוריה לפני שליחה ל-AI (8 הודעות, 800 תווים)
-- `updateProjectMap(...)` — מעדכן `project_map.json` אחרי כל execute
+- `updateProjectMap(...)` — מעדכן `project_map.json` אחרי כל execute, מחזיר את האובייקט
+
+### מודלים
+- **ברירת מחדל**: `gemini-3-flash-preview` — כל השיחות, עריכת קוד, תיאורים
+- **סריקה עמוקה (S)**: `gemini-2.5-flash-lite` — `/api/chat` עם `deepScan: true`
+- **רענון מפה**: `gemini-2.5-flash-lite` — `/api/scan-project`
+- `AIService(provider, apiKey, modelName?)` — model name ניתן לשינוי דרך ה-constructor
+
+### API Endpoints חשובים
+| Route | תיאור |
+|-------|--------|
+| POST /api/chat | צ'אט; תומך ב-`deepScan: boolean` |
+| POST /api/execute | מחזיר `snapshot` לundo |
+| POST /api/undo | משחזר קבצים מ-snapshot |
+| POST /api/scan-project | סריקת כל הקבצים, עדכון project_map.json (Flash-Lite) |
+| POST /api/create-gemini-md | ניתוח פרויקט ויצירת Gemini.md |
 
 ### Frontend — `client/src/`
 ```
 App.js              — thin coordinator, settings state בלבד
 hooks/
-  useChat.js        — כל לוגיקת הצ'אט (messages, send, execute, preview, compress)
-  useProjectData.js — README + project map
+  useChat.js        — כל לוגיקת הצ'אט (messages, send, execute, preview, compress,
+                      undo stack, deepScanMode, retry logic, missing-files check)
+  useProjectData.js — README + project map + refreshProjectMap
   useSavedChats.js  — שמירה וטעינה של שיחות
 components/
-  Header.jsx        — סרגל כלים, Tooltip wrapper לכל כפתור
+  SideMenu.jsx      — תפריט צד עם כל כפתורי השליטה
   ChatWindow.jsx    — רשימת הודעות
   MessageBubble.jsx — הודעה בודדת (plan UI, ask UI, code blocks)
   ChatInput.jsx     — קלט + context file chips
-  modals/           — SettingsModal, ReadmeModal, ProjectMapModal,
+  modals/           — SettingsModal, ReadmeModal, ProjectMapModal (+ כפתור רענון),
                       PreviewModal, SaveChatModal, LoadChatModal
 utils/
-  constants.js      — RESPONSE_LENGTHS, INITIAL_MESSAGE
+  constants.js      — RESPONSE_LENGTHS, AGENT_MODES, MEMORY_MODES, MAX_RETRIES_CYCLE
   theme.js          — סגנונות inline משותפים
   formatMessage.jsx — עיצוב טקסט הודעות
   mapUtils.js       — עיבוד project_map.json
 ```
+
+### תכונות מיוחדות ב-useChat
+- **undoStack**: שמירת snapshots לפני כל execute — כפתור ↩️
+- **maxRetries**: ניסיונות חוזרים אוטומטיים (1/3/5) עם exponential backoff
+- **deepScanMode**: מצב S — קורא כל קבצי הפרויקט, auto-reset אחרי שליחה
+- **checkMissingFiles**: בדיקת project_map.json + Gemini.md בתחילת שיחה (פעם אחת לריפו)
 
 ## פורמטים חשובים
 
@@ -51,6 +73,7 @@ utils/
 { "question": "...", "options": ["option1", "option2"] }
 [[[/ASK]]]
 ```
+ASK תומך בשדה `_action` פנימי לטיפול בפעולות מיוחדות (scan-project, create-gemini-md).
 
 ### Saved_Chats.json
 ```json

@@ -29,6 +29,7 @@ export function useChat({ aiKey, githubToken, owner, selectedRepo, responseLengt
   const [pendingPlan, setPendingPlan] = useState(null);
   const [contextFiles, setContextFiles] = useState([]);
   const [undoStack, setUndoStack] = useState([]);
+  const [deepScanMode, setDeepScanMode] = useState(false);
 
   // Agent multi-step state: null | { step: number, totalSteps: number, refinedPrompt: string }
   const [agentState, setAgentState] = useState(null);
@@ -147,13 +148,16 @@ export function useChat({ aiKey, githubToken, owner, selectedRepo, responseLengt
   };
 
   const _doChat = async (prompt, historySnapshot) => {
+    const usedDeepScan = deepScanMode;
+    if (usedDeepScan) setDeepScanMode(false); // auto-reset before the request goes out
     try {
       const res = await axios.post('/api/chat', {
         prompt,
         history: _sliceHistory(historySnapshot),
         context: { owner, repo: selectedRepo },
         responseLength,
-        contextFiles: _effectiveContextFiles()
+        contextFiles: _effectiveContextFiles(),
+        deepScan: usedDeepScan
       }, { headers: authHeaders });
       _applyResponse(parseAIResponse(res.data.response));
     } catch (e) {
@@ -344,7 +348,7 @@ export function useChat({ aiKey, githubToken, owner, selectedRepo, responseLengt
 
   return {
     messages, setMessages, loading, pendingPlan, contextFiles,
-    undoStack,
+    undoStack, deepScanMode, toggleDeepScan: () => setDeepScanMode(prev => !prev),
     clearSession, toggleContextFile, compressSession,
     sendMessage, answerAsk, executePlan, undoLastExecution, fetchPreview,
     agentState,
