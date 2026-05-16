@@ -294,15 +294,6 @@ app.post('/api/execute', executeLimiter, async (req, res) => {
       }
     }
 
-    // Update project_map.json after execution
-    try {
-      const allAffectedFiles = plan.flatMap(a => a.affectedFiles);
-      const allFiles = await github.getAiMap(context.owner, context.repo);
-      await updateProjectMap(github, ai, context.owner, context.repo, allAffectedFiles, allFiles);
-    } catch (e) {
-      console.error("project_map update failed:", e.message);
-    }
-
     res.json({ success: true, snapshot });
   } catch (e) {
     console.error("Execution Error:", e.message);
