@@ -131,6 +131,7 @@ export function SideMenu({
   memoryMode, cycleMemoryMode,
   maxRetries, cycleMaxRetries,
   onUndo, canUndo,
+  deepScanMode, toggleDeepScan,
   onOpenContextFiles,
 }) {
   const [showConfirm, setShowConfirm] = useState(false);
@@ -258,6 +259,36 @@ export function SideMenu({
 
           <SideBtn icon="🗄️" label="קבצי הקשר" title="קבצי הקשר"
             onClick={onOpenContextFiles} isOpen={isOpen} />
+
+          {/* Deep scan button — S in red when active, gray when inactive */}
+          <button
+            onClick={toggleDeepScan}
+            title={deepScanMode
+              ? 'סריקה עמוקה פעילה — ההודעה הבאה תקרא את כל קבצי הפרויקט (Gemini 2.5 Flash-Lite)'
+              : 'הפעל סריקה עמוקה של כל קבצי הפרויקט להודעה הבאה'}
+            style={{
+              ...BTN_BASE,
+              justifyContent: isOpen ? 'flex-start' : 'center',
+              gap: isOpen ? '10px' : 0,
+              background: deepScanMode ? '#fee2e2' : 'none',
+            }}
+          >
+            <span style={{
+              fontSize: '15px', fontWeight: '900', fontFamily: 'monospace',
+              minWidth: '22px', textAlign: 'center', flexShrink: 0, lineHeight: 1,
+              color: deepScanMode ? '#ef4444' : '#94a3b8',
+            }}>S</span>
+            {isOpen && (
+              <span style={{
+                fontSize: '12px',
+                fontWeight: deepScanMode ? '700' : '500',
+                color: deepScanMode ? '#ef4444' : '#374151',
+                whiteSpace: 'nowrap', overflow: 'hidden',
+              }}>
+                {deepScanMode ? 'סריקה עמוקה פעילה' : 'סריקה עמוקה'}
+              </span>
+            )}
+          </button>
 
         </div>
 

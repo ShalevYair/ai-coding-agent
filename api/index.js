@@ -161,7 +161,7 @@ app.get('/api/file', async (req, res) => {
 app.post('/api/chat', chatLimiter, async (req, res) => {
   try {
     const { ai, github } = getServices(req);
-    const { prompt, history, context, responseLength, contextFiles } = req.body;
+    const { prompt, history, context, responseLength, contextFiles, deepScan } = req.body;
 
     if (!prompt || typeof prompt !== 'string') {
       return res.status(400).json({ error: 'שדה prompt חסר או לא תקין.' });
@@ -174,6 +174,7 @@ app.post('/api/chat', chatLimiter, async (req, res) => {
     }
 
     const allFiles = await github.getAiMap(context.owner, context.repo);
+    const updatedContext = { ...context, realTimeFileList: allFiles };
 
     // Always read core context files
     let coreContent = "";
@@ -185,6 +186,32 @@ app.post('/api/chat', chatLimiter, async (req, res) => {
           coreContent += `\n--- Content of ${file} ---\n${content}\n`;
         } catch (e) {}
       }
+    }
+
+    // Deep scan mode (S button): read ALL project files, use gemini-2.5-flash-lite
+    if (deepScan) {
+      const liteAi = new AIService('google', req.headers['x-ai-key'], 'gemini-2.5-flash-lite');
+      const DEEP_SCAN_MAX = 120000;
+      let deepContent = coreContent;
+      let totalChars = coreContent.length;
+
+      for (const filePath of allFiles) {
+        if (totalChars >= DEEP_SCAN_MAX) break;
+        const fileName = filePath.split('/').pop();
+        if (SKIP_FILES.has(fileName) || filePath.startsWith('node_modules/') || coreFiles.includes(filePath)) continue;
+        try {
+          const content = await github.getFile(context.owner, context.repo, filePath);
+          if (!content) continue;
+          const maxChunk = Math.min(content.length, DEEP_SCAN_MAX - totalChars, 5000);
+          const chunk = `\n--- ${filePath} ---\n${content.substring(0, maxChunk)}\n`;
+          deepContent += chunk;
+          totalChars += chunk.length;
+        } catch (e) {}
+      }
+
+      const deepPrompt = `${deepContent}\n\nUSER MESSAGE: ${prompt}`.trim();
+      const response = await liteAi.chat(deepPrompt, compressHistory(history), updatedContext, responseLength || 'normal');
+      return res.json({ response });
     }
 
     // Dynamically fetch files mentioned in the prompt (fuzzy match)
@@ -227,7 +254,6 @@ ${dynamicContent}
 USER MESSAGE: ${prompt}
     `.trim();
 
-    const updatedContext = { ...context, realTimeFileList: allFiles };
     const response = await ai.chat(enrichedPrompt, compressHistory(history), updatedContext, responseLength || 'short');
     res.json({ response });
   } catch (e) {
