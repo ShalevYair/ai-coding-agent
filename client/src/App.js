@@ -255,12 +255,14 @@ function App() {
         <ProjectMapModal
           mapData={projectData.mapData}
           mapLoading={projectData.mapLoading}
+          mapRefreshing={projectData.mapRefreshing}
           selectedRepo={selectedRepo}
           selectedMapFile={projectData.selectedMapFile}
           setSelectedMapFile={projectData.setSelectedMapFile}
           contextFiles={chat.contextFiles}
           toggleContextFile={chat.toggleContextFile}
           onClose={projectData.closeMap}
+          onRefresh={() => projectData.refreshProjectMap(aiKey)}
         />
       )}
 

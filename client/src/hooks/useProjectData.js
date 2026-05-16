@@ -10,6 +10,7 @@ export function useProjectData({ githubToken, owner, selectedRepo }) {
   const [showMap, setShowMap] = useState(false);
   const [mapData, setMapData] = useState(null);
   const [mapLoading, setMapLoading] = useState(false);
+  const [mapRefreshing, setMapRefreshing] = useState(false);
   const [selectedMapFile, setSelectedMapFile] = useState(null);
 
   const fetchReadme = async () => {
@@ -43,6 +44,28 @@ export function useProjectData({ githubToken, owner, selectedRepo }) {
     setMapLoading(false);
   };
 
+  const refreshProjectMap = async (aiKey) => {
+    setMapRefreshing(true);
+    try {
+      const res = await axios.post('/api/scan-project',
+        { context: { owner, repo: selectedRepo } },
+        { headers: { 'x-ai-key': aiKey, 'x-github-token': githubToken } }
+      );
+      if (res.data.mapData) {
+        setMapData(res.data.mapData);
+      } else {
+        const fileRes = await axios.get('/api/file', {
+          params: { owner, repo: selectedRepo, path: 'project_map.json' },
+          headers: { 'x-github-token': githubToken }
+        });
+        setMapData(parseMapData(fileRes.data.content));
+      }
+    } catch (e) {
+      console.error('Refresh map failed:', e);
+    }
+    setMapRefreshing(false);
+  };
+
   const closeMap = () => {
     setShowMap(false);
     setSelectedMapFile(null);
@@ -62,7 +85,7 @@ export function useProjectData({ githubToken, owner, selectedRepo }) {
 
   return {
     showReadme, setShowReadme, readmeContent, readmeLoading, fetchReadme,
-    showMap, closeMap, mapData, mapLoading, selectedMapFile, setSelectedMapFile,
-    fetchProjectMap, ensureMapLoaded
+    showMap, closeMap, mapData, mapLoading, mapRefreshing, selectedMapFile, setSelectedMapFile,
+    fetchProjectMap, refreshProjectMap, ensureMapLoaded
   };
 }
