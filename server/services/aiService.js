@@ -3,7 +3,7 @@ const { GoogleGenerativeAI } = require("@google/generative-ai");
 class AIService {
   constructor(provider, apiKey) {
     this.genAI = new GoogleGenerativeAI(apiKey);
-    this.model = this.genAI.getGenerativeModel({ model: "gemini-2.5-flash" });
+    this.model = this.genAI.getGenerativeModel({ model: "gemini-3.0-flash" });
   }
 
   async chat(prompt, history, context, responseLength = 'short') {
