@@ -1,5 +1,5 @@
-import React from 'react';
-import { X, Loader2 } from 'lucide-react';
+import React, { useState } from 'react';
+import { X, Loader2, RefreshCw } from 'lucide-react';
 import { modalOverlay, modalCard } from '../../utils/theme';
 import { groupByDir } from '../../utils/mapUtils';
 
@@ -35,7 +35,7 @@ function FileDescriptionPopup({ file, description, onClose }) {
   );
 }
 
-export function ProjectMapModal({ mapData, mapLoading, selectedRepo, selectedMapFile, setSelectedMapFile, contextFiles, toggleContextFile, onClose }) {
+export function ProjectMapModal({ mapData, mapLoading, mapRefreshing, selectedRepo, selectedMapFile, setSelectedMapFile, contextFiles, toggleContextFile, onClose, onRefresh }) {
   return (
     <>
       <div style={modalOverlay} onClick={onClose}>
@@ -45,8 +45,39 @@ export function ProjectMapModal({ mapData, mapLoading, selectedRepo, selectedMap
             display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexShrink: 0
           }}>
             <span style={{ fontWeight: 'bold', fontSize: '15px' }}>🗺️ מפת פרויקט — {selectedRepo}</span>
-            <X onClick={onClose} style={{ cursor: 'pointer', color: '#94a3b8' }} size={20} />
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+              <button
+                onClick={onRefresh}
+                disabled={mapRefreshing || mapLoading}
+                title="רענן מפת פרויקט עם Gemini Flash-Lite"
+                style={{
+                  display: 'flex', alignItems: 'center', gap: '5px',
+                  padding: '5px 10px', borderRadius: '6px', border: '1px solid #e2e8f0',
+                  background: mapRefreshing ? '#f8fafc' : '#fff', cursor: mapRefreshing ? 'default' : 'pointer',
+                  fontSize: '12px', color: '#475569', fontWeight: '500',
+                  opacity: mapRefreshing ? 0.7 : 1
+                }}
+              >
+                {mapRefreshing
+                  ? <Loader2 size={13} className="animate-spin" />
+                  : <RefreshCw size={13} />}
+                {mapRefreshing ? 'מרענן...' : 'רענן'}
+              </button>
+              <X onClick={onClose} style={{ cursor: 'pointer', color: '#94a3b8' }} size={20} />
+            </div>
           </div>
+
+          {mapRefreshing && (
+            <div style={{
+              padding: '8px 18px', background: '#eff6ff',
+              borderBottom: '1px solid #bfdbfe',
+              display: 'flex', alignItems: 'center', gap: '8px',
+              fontSize: '12px', color: '#1d4ed8', flexShrink: 0
+            }}>
+              <Loader2 size={13} className="animate-spin" />
+              סורק את כל קבצי הפרויקט עם Gemini Flash-Lite — זה עשוי לקחת כחצי דקה...
+            </div>
+          )}
 
           <div style={{ padding: '14px 18px', overflowY: 'auto', flex: 1 }}>
             {mapLoading ? (

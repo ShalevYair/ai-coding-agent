@@ -1,9 +1,9 @@
 const { GoogleGenerativeAI } = require("@google/generative-ai");
 
 class AIService {
-  constructor(provider, apiKey) {
+  constructor(provider, apiKey, modelName = 'gemini-2.5-flash') {
     this.genAI = new GoogleGenerativeAI(apiKey);
-    this.model = this.genAI.getGenerativeModel({ model: "gemini-2.5-flash" });
+    this.model = this.genAI.getGenerativeModel({ model: modelName });
   }
 
   async chat(prompt, history, context, responseLength = 'short') {

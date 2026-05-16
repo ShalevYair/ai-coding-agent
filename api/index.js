@@ -125,6 +125,8 @@ async function updateProjectMap(github, ai, owner, repo, affectedFiles, allRepoF
     JSON.stringify(projectMap, null, 2),
     'Auto-update project_map.json'
   );
+
+  return projectMap;
 }
 
 app.get('/api/github/user-data', async (req, res) => {
@@ -306,10 +308,12 @@ app.post('/api/undo', executeLimiter, async (req, res) => {
   }
 });
 
-// Scan all repo files and regenerate project_map.json
+// Scan all repo files and regenerate project_map.json using Flash-Lite
 app.post('/api/scan-project', executeLimiter, async (req, res) => {
   try {
-    const { github, ai } = getServices(req);
+    const { github } = getServices(req);
+    const aiKey = req.headers['x-ai-key'];
+    const liteAi = new AIService('google', aiKey, 'gemini-2.5-flash-lite');
     const { context } = req.body;
 
     if (!context?.owner || !context?.repo) {
@@ -317,9 +321,9 @@ app.post('/api/scan-project', executeLimiter, async (req, res) => {
     }
 
     const allFiles = await github.getAiMap(context.owner, context.repo);
-    await updateProjectMap(github, ai, context.owner, context.repo, allFiles, allFiles);
+    const updatedMap = await updateProjectMap(github, liteAi, context.owner, context.repo, allFiles, allFiles);
 
-    res.json({ success: true });
+    res.json({ success: true, mapData: updatedMap });
   } catch (e) {
     console.error("Scan Error:", e.message);
     res.status(500).json({ error: e.message });
