@@ -16,14 +16,13 @@ export function MessageBubble({ message: m, fontSize, executePlan, fetchPreview,
 
   return (
     <div style={{
-      maxWidth: '90%', padding: '10px 14px', borderRadius: '14px',
-      background: m.role === 'user' ? '#3b82f6' : '#e2e8f0',
+      maxWidth: '90%', padding: m.role === 'user' ? '10px 14px' : '10px 0', borderRadius: '14px',
+      background: m.role === 'user' ? '#3b82f6' : 'transparent',
       color: m.role === 'user' ? '#fff' : '#1e293b',
-      boxShadow: '0 1px 2px rgba(0,0,0,0.05)',
-      border: m.role === 'user' ? 'none' : '1px solid #cbd5e1',
+      boxShadow: m.role === 'user' ? '0 1px 2px rgba(0,0,0,0.05)' : 'none',
+      border: 'none',
       fontSize: `${fontSize}px`, lineHeight: '1.6'
     }}>
-      {m.role === 'bot' && <span style={{ marginLeft: '6px' }}>🤖</span>}
       {formatMessage(m.text, m.role === 'user')}
 
       {m.hasAsk && m.askData && (
