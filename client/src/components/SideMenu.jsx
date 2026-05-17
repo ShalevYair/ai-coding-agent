@@ -1,5 +1,18 @@
 import React, { useState } from 'react';
-import { Settings } from 'lucide-react';
+import {
+  Settings,
+  Plus,
+  RotateCcw,
+  RefreshCw,
+  Zap,
+  Map,
+  Save,
+  FolderOpen,
+  FileText,
+  Trash2,
+  ChevronRight,
+  ChevronLeft
+} from 'lucide-react';
 import { RESPONSE_LENGTHS, AGENT_MODES, MEMORY_MODES } from '../utils/constants';
 
 const BTN_BASE = {
@@ -170,22 +183,22 @@ export function SideMenu({
         {/* Scrollable button area */}
         <div style={{ flex: 1, overflowY: 'auto', overflowX: 'hidden', display: 'flex', flexDirection: 'column', gap: '2px', padding: '4px' }}>
 
-          <SideBtn icon="☰" label="סגור תפריט" title="פתח/סגור תפריט"
+          <SideBtn icon={isOpen ? <ChevronRight size={20} /> : <ChevronLeft size={20} />} label="סגור תפריט" title="פתח/סגור תפריט"
             onClick={() => setIsOpen(!isOpen)} isOpen={isOpen} />
 
           <Divider />
 
-          <SideBtn icon="➕" label="שיחה חדשה" title="שיחה חדשה"
+          <SideBtn icon={<Plus size={20} />} label="שיחה חדשה" title="שיחה חדשה"
             onClick={handleNewChatClick} isOpen={isOpen} />
 
-          <SideBtn icon="💬" label="טען שיחה" title="טען שיחה"
+          <SideBtn icon={<FileText size={20} />} label="טען שיחה" title="טען שיחה"
             onClick={onOpenLoad} isOpen={isOpen} />
 
-          <SideBtn icon="🗜️" label="דחוס שיחה" title="דחוס שיחה"
+          <SideBtn icon={<RefreshCw size={20} />} label="דחוס שיחה" title="דחוס שיחה"
             onClick={compressSession} isOpen={isOpen} />
 
           <SideBtn
-            icon="↩️"
+            icon={<RotateCcw size={20} />}
             label="בטל שינוי אחרון"
             title="שחזר גרסה קודמת מגיטהאב"
             onClick={onUndo}
@@ -194,7 +207,7 @@ export function SideMenu({
           />
 
           <SideBtn
-            icon={String(maxRetries)}
+            icon={<Zap size={20} />}
             label={`${maxRetries} ניסיונות תיקון`}
             title="מספר ניסיונות אוטומטי אם הביצוע נכשל — לחץ למעבר"
             onClick={cycleMaxRetries}
@@ -213,7 +226,7 @@ export function SideMenu({
           />
 
           <SideBtn
-            icon={autoSave ? '💾' : '🚫'}
+            icon={autoSave ? <Save size={20} /> : <Trash2 size={20} />}
             label={autoSave ? 'שמירה אוטומטית' : 'שמירה כבויה'}
             title={autoSave ? 'שמירה אוטומטית פעילה' : 'שמירה אוטומטית כבויה'}
             onClick={toggleAutoSave}
@@ -223,14 +236,14 @@ export function SideMenu({
 
           <Divider />
 
-          <SideBtn icon="🗺️" label="מפת פרויקט" title="מפת פרויקט"
+          <SideBtn icon={<Map size={20} />} label="מפת פרויקט" title="מפת פרויקט"
             onClick={fetchProjectMap} isOpen={isOpen} />
 
-          <SideBtn icon="❓" label="עזרה / README" title="עזרה / README"
+          <SideBtn icon={<FileText size={20} />} label="עזרה / README" title="עזרה / README"
             onClick={fetchReadme} isOpen={isOpen} />
 
           <SideBtn
-            icon="📁"
+            icon={<FolderOpen size={20} />}
             label={selectedRepo || 'בחר פרויקט'}
             title="בחר פרויקט"
             onClick={() => setShowRepoDropdown(true)}
@@ -257,7 +270,7 @@ export function SideMenu({
             active={memoryMode !== 'cat'}
           />
 
-          <SideBtn icon="🗄️" label="קבצי הקשר" title="קבצי הקשר"
+          <SideBtn icon={<FolderOpen size={20} />} label="קבצי הקשר" title="קבצי הקשר"
             onClick={onOpenContextFiles} isOpen={isOpen} />
 
           {/* Deep scan button — S in red when active, gray when inactive */}
@@ -306,7 +319,7 @@ export function SideMenu({
                 ...BTN_BASE, flex: 1, justifyContent: 'center', gap: '6px',
                 padding: '5px 8px', color: '#374151', fontSize: '12px', fontWeight: '500'
               }}>
-                <Settings size={15} />
+                <Settings size={20} />
                 <span>הגדרות</span>
               </button>
               <button onClick={() => changeFontSize(+1)} title="הגדל גופן" style={{
@@ -318,7 +331,7 @@ export function SideMenu({
             </div>
           ) : (
             <SideBtn
-              icon={<Settings size={17} />}
+              icon={<Settings size={20} />}
               label="הגדרות"
               title="הגדרות"
               onClick={onOpenSettings}
