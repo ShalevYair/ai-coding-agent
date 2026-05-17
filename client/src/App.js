@@ -29,6 +29,7 @@ function App() {
   const [repoList, setRepoList]           = useState([]);
   const [responseLength, setResponseLength] = useState(localStorage.getItem('response_length') || 'short');
   const [fontSize, setFontSize]           = useState(parseInt(localStorage.getItem('font_size') || '14', 10));
+  const [ttsEnabled, setTtsEnabled]       = useState(true);
 
   // ── Side menu + new feature states ────────────────────────────────────────
   const [sideMenuOpen, setSideMenuOpen]   = useState(false);
@@ -78,7 +79,7 @@ function App() {
   const changeFontSize      = (delta) => setFontSize(prev => Math.min(20, Math.max(11, prev + delta)));
 
   // ── Chat logic ─────────────────────────────────────────────────────────────
-  const chat = useChat({ aiKey, githubToken, owner, selectedRepo, responseLength, agentMode, memoryMode, maxRetries });
+  const chat = useChat({ aiKey, githubToken, owner, selectedRepo, responseLength, agentMode, memoryMode, maxRetries, ttsEnabled });
 
   // ── Project data (README, project map) ────────────────────────────────────
   const projectData = useProjectData({ githubToken, owner, selectedRepo });
@@ -221,6 +222,8 @@ function App() {
           toggleContextFile={chat.toggleContextFile}
           fontSize={fontSize}
           agentState={chat.agentState}
+          ttsEnabled={ttsEnabled}
+          setTtsEnabled={setTtsEnabled}
         />
       </div>
 
