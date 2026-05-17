@@ -23,7 +23,7 @@ function parseAIResponse(aiRes) {
   return { type: 'text', text: aiRes };
 }
 
-export function useChat({ aiKey, githubToken, owner, selectedRepo, responseLength, agentMode = 'dove', memoryMode = 'cat', maxRetries = 3 }) {
+export function useChat({ aiKey, githubToken, owner, selectedRepo, responseLength, agentMode = 'dove', memoryMode = 'cat', maxRetries = 3, ttsEnabled }) {
   const [messages, setMessages] = useState(loadSavedMessages);
   const [loading, setLoading] = useState(false);
   const [pendingPlan, setPendingPlan] = useState(null);
@@ -55,6 +55,18 @@ export function useChat({ aiKey, githubToken, owner, selectedRepo, responseLengt
     checkedReposRef.current.add(key);
     checkMissingFiles(owner, selectedRepo);
   }, [selectedRepo, owner, aiKey, githubToken]);
+
+  const speakHebrew = (text) => {
+    if (!window.speechSynthesis || !text) return;
+    const noMarkdown = text.replace(/[\s\S]*?/g, '');
+    const words = noMarkdown.split(/\s+/);
+    const hebrewOnly = words.filter(word => /[\u0590-\u05FF]/.test(word)).join(' ');
+    if (!hebrewOnly.trim()) return;
+
+    const utterance = new SpeechSynthesisUtterance(hebrewOnly);
+    utterance.lang = 'he-IL';
+    window.speechSynthesis.speak(utterance);
+  };
 
   const clearSession = () => {
     setMessages([INITIAL_MESSAGE]);
@@ -159,7 +171,9 @@ export function useChat({ aiKey, githubToken, owner, selectedRepo, responseLengt
         contextFiles: _effectiveContextFiles(),
         deepScan: usedDeepScan
       }, { headers: authHeaders });
-      _applyResponse(parseAIResponse(res.data.response));
+      const aiRes = res.data.response;
+      _applyResponse(parseAIResponse(aiRes));
+      if (ttsEnabled) speakHebrew(aiRes);
     } catch (e) {
       const errorMsg = e.response?.data?.error || e.message;
       setMessages(prev => [...prev, { role: 'bot', text: `❌ שגיאה: ${errorMsg}` }]);
@@ -210,6 +224,7 @@ export function useChat({ aiKey, githubToken, owner, selectedRepo, responseLengt
           role: 'bot',
           text: `✨ פרומט מעודכן (שלב ${nextStep}/${totalSteps}):\n\n${refined2}`
         }]);
+        if (ttsEnabled) speakHebrew(refined2);
         setAgentState({ step: nextStep, totalSteps, refinedPrompt: refined2 });
         setLoading(false);
       } else {
@@ -234,6 +249,7 @@ export function useChat({ aiKey, githubToken, owner, selectedRepo, responseLengt
         role: 'bot',
         text: `✨ פרומט מוצע (שלב 1/${totalSteps}):\n\n${refined}`
       }]);
+      if (ttsEnabled) speakHebrew(refined);
       setAgentState({ step: 1, totalSteps, refinedPrompt: refined });
       setLoading(false);
     }
