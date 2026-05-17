@@ -184,54 +184,44 @@ function App() {
         onOpenContextFiles={async () => { await projectData.ensureMapLoaded(); setShowContextFiles(true); }}
       />
 
-      {/* Main content wrapper - takes remaining space and centers its child */}
+      {/* Main content area */}
       <div style={{
-        flexGrow: 1, // Takes all available horizontal space
+        flex: 1,
         display: 'flex',
-        flexDirection: 'row', // Align content in a row to allow horizontal centering
-        justifyContent: 'center', // Center horizontally
-        // alignItems: 'stretch' is default and keeps content filling vertical space
-        overflow: 'hidden', // Handle any overflow within this wrapper
+        flexDirection: 'column',
+        overflow: 'hidden',
+        minWidth: 0,
+        height: '100%'
       }}>
-        {/* Left — chat area */}
+
+        {/* Mini header */}
         <div style={{
-          width: '600px', // Set a fixed width for the chat window
-          display: 'flex',
-          flexDirection: 'column',
-          overflow: 'hidden',
-          minWidth: 0,
-          height: '100%', // Ensure it takes full vertical height of the wrapper
+          padding: '10px 14px', background: '#fff',
+          borderBottom: '1px solid #e2e8f0', flexShrink: 0
         }}>
-
-          {/* Mini header */}
-          <div style={{
-            padding: '10px 14px', background: '#fff',
-            borderBottom: '1px solid #e2e8f0', flexShrink: 0
-          }}>
-            <h1 style={{ fontSize: '15px', fontWeight: 'bold', margin: 0 }}>AI Coding Agent 🤖</h1>
-            <div style={{ fontSize: '11px', color: '#3b82f6', fontWeight: '600' }}>
-              {selectedRepo || 'בחר פרויקט בתפריט ←'}
-            </div>
+          <h1 style={{ fontSize: '15px', fontWeight: 'bold', margin: 0 }}>AI Coding Agent 🤖</h1>
+          <div style={{ fontSize: '11px', color: '#3b82f6', fontWeight: '600' }}>
+            {selectedRepo || 'בחר פרויקט בתפריט ←'}
           </div>
-
-          <ChatWindow
-            messages={chat.messages}
-            loading={chat.loading}
-            fontSize={fontSize}
-            executePlan={chat.executePlan}
-            fetchPreview={chat.fetchPreview}
-            answerAsk={chat.answerAsk}
-          />
-
-          <ChatInput
-            loading={chat.loading}
-            sendMessage={(text) => chat.sendMessage(text, chat.messages)}
-            contextFiles={chat.contextFiles}
-            toggleContextFile={chat.toggleContextFile}
-            fontSize={fontSize}
-            agentState={chat.agentState}
-          />
         </div>
+
+        <ChatWindow
+          messages={chat.messages}
+          loading={chat.loading}
+          fontSize={fontSize}
+          executePlan={chat.executePlan}
+          fetchPreview={chat.fetchPreview}
+          answerAsk={chat.answerAsk}
+        />
+
+        <ChatInput
+          loading={chat.loading}
+          sendMessage={(text) => chat.sendMessage(text, chat.messages)}
+          contextFiles={chat.contextFiles}
+          toggleContextFile={chat.toggleContextFile}
+          fontSize={fontSize}
+          agentState={chat.agentState}
+        />
       </div>
 
       {/* Modals */}
