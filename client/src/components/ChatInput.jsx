@@ -10,6 +10,7 @@ import React, { useState, useRef, useCallback, useEffect } from 'react';
       const [isListening, setIsListening] = useState(false);
       const textareaRef = useRef(null);
       const recognitionRef = useRef(null);
+      const isListeningRef = useRef(false);
     
       const adjustHeight = useCallback(() => {
         const ta = textareaRef.current;
@@ -51,6 +52,8 @@ import React, { useState, useRef, useCallback, useEffect } from 'react';
     
       const startSpeechRecognition = () => {
         if (isListening) {
+          isListeningRef.current = false;
+          setIsListening(false);
           recognitionRef.current?.stop();
           return;
         }
@@ -65,15 +68,35 @@ import React, { useState, useRef, useCallback, useEffect } from 'react';
         recognitionRef.current = recognition;
         recognition.lang = 'he-IL';
         recognition.continuous = true;
-        recognition.interimResults = false;
+        recognition.interimResults = true;
     
-        recognition.onstart = () => setIsListening(true);
-        recognition.onend = () => setIsListening(false);
-        recognition.onerror = () => setIsListening(false);
+        recognition.onstart = () => {
+          setIsListening(true);
+          isListeningRef.current = true;
+        };
+
+        recognition.onend = () => {
+          if (isListeningRef.current) {
+            try {
+              recognition.start();
+            } catch (err) {
+              console.error('Recognition restart error:', err);
+            }
+          } else {
+            setIsListening(false);
+          }
+        };
+
+        recognition.onerror = (event) => {
+          if (event.error !== 'no-speech') {
+            isListeningRef.current = false;
+            setIsListening(false);
+          }
+        };
     
         recognition.onresult = (event) => {
           let resultChunk = '';
-          for (let i = event.resultIndex; i < event.results.length; ++i) {
+          for (let i = event.resultIndex; i < event.results.length; i++) {
             if (event.results[i].isFinal) {
               resultChunk += event.results[i][0].transcript;
             }
@@ -92,6 +115,7 @@ import React, { useState, useRef, useCallback, useEffect } from 'react';
           }
         };
     
+        isListeningRef.current = true;
         recognition.start();
       };
     
