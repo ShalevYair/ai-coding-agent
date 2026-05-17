@@ -1,5 +1,5 @@
 import React from 'react';
-import { Settings } from 'lucide-react';
+import { Settings, Github, Bot } from 'lucide-react';
 import { Tooltip } from './Tooltip';
 import { RESPONSE_LENGTHS } from '../utils/constants';
 import { iconBtn } from '../utils/theme';
@@ -18,7 +18,7 @@ export function Header({
       flexShrink: 0
     }}>
       <div>
-        <h1 style={{ fontSize: '15px', fontWeight: 'bold', margin: 0 }}>AI Coding Agent 🤖</h1>
+        <h1 style={{ fontSize: '15px', fontWeight: 'bold', margin: 0 }}>AI Coding Agent <Bot size={20} /></h1>
         <div style={{ fontSize: '11px', color: '#3b82f6', fontWeight: '600' }}>
           {selectedRepo || 'בחר פרויקט...'}
         </div>
@@ -49,7 +49,9 @@ export function Header({
           <button style={{ ...iconBtn, fontSize: '15px', fontWeight: 'bold', color: '#64748b' }} onClick={() => changeFontSize(+1)}>+</button>
         </Tooltip>
         <Tooltip text="עזרה / README">
-          <button style={iconBtn} onClick={fetchReadme}>❓</button>
+          <button style={iconBtn} onClick={fetchReadme}>
+            <Github size={20} />
+          </button>
         </Tooltip>
         <Tooltip text="מפת פרויקט">
           <button style={iconBtn} onClick={fetchProjectMap}>🗺️</button>
