@@ -27,10 +27,10 @@ export function ChatInput({ loading, sendMessage, contextFiles, toggleContextFil
     setInputText(e.target.value);
   };
 
-  const handleSend = () => {
+  const handleSend = (explicitText) => {
     if (loading) return;
-    if (!inputText.trim() && !agentState) return;
-    const text = inputText;
+    const text = typeof explicitText === 'string' ? explicitText : inputText;
+    if (!text.trim() && !agentState) return;
     setInputText('');
     sendMessage(text);
     const ta = textareaRef.current;
@@ -59,13 +59,24 @@ export function ChatInput({ loading, sendMessage, contextFiles, toggleContextFil
     recognition.continuous = false;
     recognition.interimResults = false;
 
+    const stopListening = () => recognition.stop();
+
     recognition.onstart = () => setIsListening(true);
     recognition.onend = () => setIsListening(false);
     recognition.onerror = () => setIsListening(false);
     
     recognition.onresult = (event) => {
       const transcript = event.results[event.results.length - 1][0].transcript;
-      setInputText(prev => prev + (prev.length > 0 ? ' ' : '') + transcript);
+      const currentFull = (inputText + (inputText.length > 0 ? ' ' : '') + transcript).trim();
+      
+      if (currentFull.endsWith('רות')) {
+        const cleanText = currentFull.slice(0, -3).trim();
+        setInputText(cleanText);
+        stopListening();
+        handleSend(cleanText);
+      } else {
+        setInputText(currentFull);
+      }
     };
 
     recognition.start();
