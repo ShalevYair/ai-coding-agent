@@ -10,6 +10,10 @@ export function ChatInput({ loading, sendMessage, contextFiles, toggleContextFil
   const [isListening, setIsListening] = useState(false);
   const textareaRef = useRef(null);
   const recognitionRef = useRef(null);
+  const isListeningRef = useRef(false);    // mirror of isListening for use in async callbacks
+  const wasListeningRef = useRef(false);   // was mic on when last message was sent?
+  const prevLoadingRef = useRef(false);
+  const handleSendRef = useRef(null);      // always-fresh ref to handleSend
 
   const adjustHeight = useCallback(() => {
     const ta = textareaRef.current;
@@ -24,68 +28,36 @@ export function ChatInput({ loading, sendMessage, contextFiles, toggleContextFil
     adjustHeight();
   }, [inputText, adjustHeight]);
 
-  const handleChange = (e) => {
-    setInputText(e.target.value);
-  };
+  const handleChange = (e) => setInputText(e.target.value);
 
-  const handleSend = (explicitText) => {
-    if (loading) return;
-    const text = typeof explicitText === 'string' ? explicitText : inputText;
-    if (!text.trim() && !agentState) return;
-    setInputText('');
-    sendMessage(text);
-    const ta = textareaRef.current;
-    if (ta) { 
-      ta.style.height = LINE_HEIGHT * INITIAL_LINES + 'px'; 
-      ta.style.overflowY = 'hidden'; 
-      ta.focus();
-    }
-    textareaRef.current?.focus();
-  };
-
-  const handleKeyDown = (e) => {
-    if (e.key === 'Enter' && !e.shiftKey) {
-      e.preventDefault();
-      handleSend();
-    }
-  };
-
-  const startSpeechRecognition = () => {
-    if (isListening) {
-      recognitionRef.current?.stop();
-      return;
-    }
-
+  // Core recognition setup, extracted so it can be reused for auto-restart
+  const startListening = useCallback(() => {
     const SpeechRecognition = window.webkitSpeechRecognition || window.SpeechRecognition;
     if (!SpeechRecognition) {
       alert('Speech recognition is not supported in this browser.');
       return;
     }
-
     const recognition = new SpeechRecognition();
     recognitionRef.current = recognition;
     recognition.lang = 'he-IL';
     recognition.continuous = true;
     recognition.interimResults = false;
 
-    recognition.onstart = () => setIsListening(true);
-    recognition.onend = () => setIsListening(false);
-    recognition.onerror = () => setIsListening(false);
+    recognition.onstart = () => { setIsListening(true); isListeningRef.current = true; };
+    recognition.onend   = () => { setIsListening(false); isListeningRef.current = false; };
+    recognition.onerror = () => { setIsListening(false); isListeningRef.current = false; };
 
     recognition.onresult = (event) => {
       let resultChunk = '';
       for (let i = event.resultIndex; i < event.results.length; ++i) {
-        if (event.results[i].isFinal) {
-          resultChunk += event.results[i][0].transcript;
-        }
+        if (event.results[i].isFinal) resultChunk += event.results[i][0].transcript;
       }
-
       if (resultChunk) {
         setInputText(prev => {
           const combined = (prev + (prev.length > 0 ? ' ' : '') + resultChunk).trim();
           if (combined.endsWith('רות') || combined.endsWith('רות.')) {
             const cleanText = combined.replace(/רות\.?$/, '').trim();
-            setTimeout(() => handleSend(cleanText), 0);
+            setTimeout(() => handleSendRef.current?.(cleanText), 0);
             return '';
           }
           return combined;
@@ -94,7 +66,66 @@ export function ChatInput({ loading, sendMessage, contextFiles, toggleContextFil
     };
 
     recognition.start();
+    textareaRef.current?.focus();
+  }, []);
+
+  const startSpeechRecognition = () => {
+    if (isListeningRef.current) {
+      recognitionRef.current?.stop();
+      return;
+    }
+    startListening();
   };
+
+  const handleSend = (explicitText) => {
+    if (loading) return;
+    const text = typeof explicitText === 'string' ? explicitText : inputText;
+    if (!text.trim() && !agentState) return;
+
+    // Stop mic before sending; remember to restart after TTS finishes
+    if (isListeningRef.current) {
+      wasListeningRef.current = true;
+      recognitionRef.current?.stop();
+    }
+
+    setInputText('');
+    sendMessage(text);
+    const ta = textareaRef.current;
+    if (ta) {
+      ta.style.height = LINE_HEIGHT * INITIAL_LINES + 'px';
+      ta.style.overflowY = 'hidden';
+      ta.focus();
+    }
+  };
+
+  // Keep ref always up-to-date so recognition.onresult can call the latest version
+  handleSendRef.current = handleSend;
+
+  const handleKeyDown = (e) => {
+    if (e.key === 'Enter' && !e.shiftKey) {
+      e.preventDefault();
+      handleSend();
+    }
+  };
+
+  // When loading ends and mic was on before sending → wait for TTS, then restart mic
+  useEffect(() => {
+    if (prevLoadingRef.current && !loading && wasListeningRef.current) {
+      const tryRestart = () => {
+        if (ttsEnabled && window.speechSynthesis?.speaking) {
+          setTimeout(tryRestart, 300);
+        } else {
+          wasListeningRef.current = false;
+          setTimeout(() => {
+            if (!isListeningRef.current) startListening();
+          }, 200);
+        }
+      };
+      // Initial delay so TTS has time to start before we check .speaking
+      setTimeout(tryRestart, 500);
+    }
+    prevLoadingRef.current = loading;
+  }, [loading, ttsEnabled, startListening]);
 
   return (
     <>
@@ -104,9 +135,9 @@ export function ChatInput({ loading, sendMessage, contextFiles, toggleContextFil
           borderTop: '1px solid #bfdbfe',
           display: 'flex', flexWrap: 'wrap', gap: '5px', flexShrink: 0
         }}>
-          <span style={{ 
-            fontSize: '10px', color: '#3b82f6', fontWeight: '600', 
-            alignSelf: 'center', display: 'flex', alignItems: 'center', gap: '4px' 
+          <span style={{
+            fontSize: '10px', color: '#3b82f6', fontWeight: '600',
+            alignSelf: 'center', display: 'flex', alignItems: 'center', gap: '4px'
           }}>
             <Paperclip size={20} /> קונטקסט:
           </span>
@@ -143,7 +174,7 @@ export function ChatInput({ loading, sendMessage, contextFiles, toggleContextFil
             overflowY: 'hidden', direction: 'rtl'
           }}
         />
-        <button 
+        <button
           onClick={startSpeechRecognition}
           style={{
             background: isListening ? '#fee2e2' : '#f1f5f9',
@@ -152,20 +183,20 @@ export function ChatInput({ loading, sendMessage, contextFiles, toggleContextFil
             display: 'flex', alignItems: 'center', justifyContent: 'center',
             minHeight: '42px', transition: 'all 0.2s'
           }}
-          title="הקלט הודעה"
+          title={isListening ? 'עצור הקלטה' : 'הקלט הודעה'}
         >
           {isListening ? <MicOff size={20} /> : <Mic size={20} />}
         </button>
-        <button 
+        <button
           onClick={() => setTtsEnabled(!ttsEnabled)}
           style={{
-            background: '#f1f5f9',
+            background: ttsEnabled ? '#eff6ff' : '#f1f5f9',
             border: 'none', padding: '10px 12px', borderRadius: '10px',
             cursor: 'pointer', flexShrink: 0,
             display: 'flex', alignItems: 'center', justifyContent: 'center',
             minHeight: '42px', transition: 'all 0.2s', fontSize: '18px'
           }}
-          title={ttsEnabled ? "השתק הקראה" : "הפעל הקראה"}
+          title={ttsEnabled ? 'השתק הקראה' : 'הפעל הקראה'}
         >
           {ttsEnabled ? '🔊' : '🔇'}
         </button>
