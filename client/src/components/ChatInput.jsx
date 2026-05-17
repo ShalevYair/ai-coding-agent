@@ -9,6 +9,7 @@ export function ChatInput({ loading, sendMessage, contextFiles, toggleContextFil
   const [inputText, setInputText] = useState('');
   const [isListening, setIsListening] = useState(false);
   const textareaRef = useRef(null);
+  const recognitionRef = useRef(null);
 
   const adjustHeight = useCallback(() => {
     const ta = textareaRef.current;
@@ -37,6 +38,7 @@ export function ChatInput({ loading, sendMessage, contextFiles, toggleContextFil
     if (ta) { 
       ta.style.height = LINE_HEIGHT * INITIAL_LINES + 'px'; 
       ta.style.overflowY = 'hidden'; 
+      ta.focus();
     }
   };
 
