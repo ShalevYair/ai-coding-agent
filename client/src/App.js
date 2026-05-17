@@ -25,7 +25,7 @@ function App() {
   const [aiKey, setAiKey]                 = useState(localStorage.getItem('ai_key')        || '');
   const [githubToken, setGithubToken]     = useState(localStorage.getItem('gh_token')      || '');
   const [owner, setOwner]                 = useState(localStorage.getItem('owner')         || '');
-  const [selectedRepo, setSelectedRepo]   = localStorage.getItem('selected_repo') ? useState(localStorage.getItem('selected_repo')) : useState('');
+  const [selectedRepo, setSelectedRepo]   = useState(localStorage.getItem('selected_repo') || '');
   const [repoList, setRepoList]           = useState([]);
   const [responseLength, setResponseLength] = useState(localStorage.getItem('response_length') || 'short');
   const [fontSize, setFontSize]           = useState(parseInt(localStorage.getItem('font_size') || '14', 10));
@@ -64,22 +64,6 @@ function App() {
     if (!aiKey || !githubToken || !selectedRepo) setShowSettings(true);
   }, []);
 
-  useEffect(() => {
-    if (ttsEnabled && !chat.loading && chat.messages.length > 0) {
-      const lastMsg = chat.messages[chat.messages.length - 1];
-      if (lastMsg.role === 'assistant' && lastMsg !== lastSpokenRef.current) {
-        const matches = lastMsg.text.match(/[֐-׿\s, .\?!\-"']+/g);
-        const hebrewText = matches ? matches.join('') : '';
-        if (hebrewText.trim()) {
-          const utterance = new SpeechSynthesisUtterance(hebrewText);
-          utterance.lang = 'he-IL';
-          window.speechSynthesis.speak(utterance);
-        }
-        lastSpokenRef.current = lastMsg;
-      }
-    }
-  }, [chat.messages, chat.loading, ttsEnabled]);
-
   const fetchGitHubData = async () => {
     try {
       const res = await axios.get('/api/github/user-data', { headers: { 'x-github-token': githubToken } });
@@ -97,6 +81,22 @@ function App() {
 
   // ── Chat logic ─────────────────────────────────────────────────────────────
   const chat = useChat({ aiKey, githubToken, owner, selectedRepo, responseLength, agentMode, memoryMode, maxRetries, ttsEnabled });
+
+  useEffect(() => {
+    if (ttsEnabled && !chat.loading && chat.messages.length > 0) {
+      const lastMsg = chat.messages[chat.messages.length - 1];
+      if (lastMsg.role === 'assistant' && lastMsg !== lastSpokenRef.current) {
+        const matches = lastMsg.text.match(/[֐-׿\s, .\?!\-"']+/g);
+        const hebrewText = matches ? matches.join('') : '';
+        if (hebrewText.trim()) {
+          const utterance = new SpeechSynthesisUtterance(hebrewText);
+          utterance.lang = 'he-IL';
+          window.speechSynthesis.speak(utterance);
+        }
+        lastSpokenRef.current = lastMsg;
+      }
+    }
+  }, [chat.messages, chat.loading, ttsEnabled]);
 
   // ── Project data (README, project map) ────────────────────────────────────
   const projectData = useProjectData({ githubToken, owner, selectedRepo });
