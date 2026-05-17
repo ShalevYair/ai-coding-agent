@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import axios from 'axios';
 
 import { useChat } from './hooks/useChat';
@@ -30,6 +30,7 @@ function App() {
   const [responseLength, setResponseLength] = useState(localStorage.getItem('response_length') || 'short');
   const [fontSize, setFontSize]           = useState(parseInt(localStorage.getItem('font_size') || '14', 10));
   const [ttsEnabled, setTtsEnabled]       = useState(true);
+  const lastSpokenRef = useRef(null);
 
   // ── Side menu + new feature states ────────────────────────────────────────
   const [sideMenuOpen, setSideMenuOpen]   = useState(false);
@@ -62,6 +63,22 @@ function App() {
   useEffect(() => {
     if (!aiKey || !githubToken || !selectedRepo) setShowSettings(true);
   }, []);
+
+  useEffect(() => {
+    if (ttsEnabled && !chat.loading && chat.messages.length > 0) {
+      const lastMsg = chat.messages[chat.messages.length - 1];
+      if (lastMsg.role === 'assistant' && lastMsg !== lastSpokenRef.current) {
+        const matches = lastMsg.text.match(/[֐-׿\s, .\?!\-"']+/g);
+        const hebrewText = matches ? matches.join('') : '';
+        if (hebrewText.trim()) {
+          const utterance = new SpeechSynthesisUtterance(hebrewText);
+          utterance.lang = 'he-IL';
+          window.speechSynthesis.speak(utterance);
+        }
+        lastSpokenRef.current = lastMsg;
+      }
+    }
+  }, [chat.messages, chat.loading, ttsEnabled]);
 
   const fetchGitHubData = async () => {
     try {
@@ -182,6 +199,8 @@ function App() {
         canUndo={chat.undoStack.length > 0}
         deepScanMode={chat.deepScanMode}
         toggleDeepScan={chat.toggleDeepScan}
+        ttsEnabled={ttsEnabled}
+        setTtsEnabled={setTtsEnabled}
         onOpenContextFiles={async () => { await projectData.ensureMapLoaded(); setShowContextFiles(true); }}
       />
 
