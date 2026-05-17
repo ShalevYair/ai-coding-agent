@@ -2,9 +2,10 @@ import React, { useState } from 'react';
 import { CheckCircle2 } from 'lucide-react';
 import { formatMessage } from '../utils/formatMessage';
 
-export function MessageBubble({ message: m, fontSize, executePlan, fetchPreview, answerAsk, currentMessages, isExecuting }) {
+export function MessageBubble({ message: m, fontSize, executePlan, fetchPreview, answerAsk, currentMessages }) {
   const [expandedFiles, setExpandedFiles] = useState({});
   const [expandedFunctions, setExpandedFunctions] = useState({});
+  const [isExecuting, setIsExecuting] = useState(false);
 
   const toggleFile = (file) => {
     setExpandedFiles(prev => ({ ...prev, [file]: !prev[file] }));
@@ -13,6 +14,13 @@ export function MessageBubble({ message: m, fontSize, executePlan, fetchPreview,
   const toggleFunction = (fnKey) => {
     setExpandedFunctions(prev => ({ ...prev, [fnKey]: !prev[fnKey] }));
   };
+
+  const handleExecute = () => {
+    setIsExecuting(true);
+    executePlan();
+  };
+
+  const isConfirmDisabled = isExecuting || m.planSteps?.some(step => step.status !== 'pending');
 
   return (
     <div style={{
@@ -112,16 +120,16 @@ export function MessageBubble({ message: m, fontSize, executePlan, fetchPreview,
               👁️ תצוגה מקדימה
             </button>
             <button 
-              onClick={executePlan} 
-              disabled={isExecuting}
+              onClick={handleExecute} 
+              disabled={isConfirmDisabled}
               style={{
-                flex: 1, padding: '9px', background: isExecuting ? '#94a3b8' : '#10b981', color: '#fff',
+                flex: 1, padding: '9px', background: isConfirmDisabled ? '#94a3b8' : '#10b981', color: '#fff',
                 border: 'none', borderRadius: '8px', fontWeight: 'bold', 
-                cursor: isExecuting ? 'not-allowed' : 'pointer',
+                cursor: isConfirmDisabled ? 'not-allowed' : 'pointer',
                 display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '5px',
                 fontSize: '12px'
               }}>
-              <CheckCircle2 size={20} /> {isExecuting ? 'מבצע...' : 'אשר ביצוע'}
+              <CheckCircle2 size={20} /> {isConfirmDisabled ? 'מבצע...' : 'אשר ביצוע'}
             </button>
           </div>
         </div>
