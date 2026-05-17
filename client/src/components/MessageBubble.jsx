@@ -121,7 +121,7 @@ export function MessageBubble({ message: m, fontSize, executePlan, fetchPreview,
                 display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '5px',
                 fontSize: '12px'
               }}>
-              <CheckCircle2 size={15} /> {isExecuting ? 'מבצע...' : 'אשר ביצוע'}
+              <CheckCircle2 size={20} /> {isExecuting ? 'מבצע...' : 'אשר ביצוע'}
             </button>
           </div>
         </div>
