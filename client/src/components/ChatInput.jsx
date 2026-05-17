@@ -1,4 +1,4 @@
-import React, { useState, useRef, useCallback, useEffect } from 'react';
+import React, { useState, useRef, useEffect, useCallback } from 'react';
 import { Send, X, Mic, MicOff, Paperclip } from 'lucide-react';
 
 const LINE_HEIGHT = 24;
@@ -10,10 +10,8 @@ export function ChatInput({ loading, sendMessage, contextFiles, toggleContextFil
   const [isListening, setIsListening] = useState(false);
   const textareaRef = useRef(null);
   const recognitionRef = useRef(null);
-  const isListeningRef = useRef(false);    // mirror of isListening for use in async callbacks
-  const wasListeningRef = useRef(false);   // was mic on when last message was sent?
-  const prevLoadingRef = useRef(false);
-  const handleSendRef = useRef(null);      // always-fresh ref to handleSend
+  const userWantsListeningRef = useRef(false); // true = mic should always be on
+  const startListeningRef = useRef(null);
 
   const adjustHeight = useCallback(() => {
     const ta = textareaRef.current;
@@ -24,28 +22,41 @@ export function ChatInput({ loading, sendMessage, contextFiles, toggleContextFil
     ta.style.overflowY = ta.scrollHeight > maxHeight ? 'auto' : 'hidden';
   }, []);
 
-  useEffect(() => {
-    adjustHeight();
-  }, [inputText, adjustHeight]);
+  useEffect(() => { adjustHeight(); }, [inputText, adjustHeight]);
 
-  const handleChange = (e) => setInputText(e.target.value);
+  // Keep ref always fresh so onresult can call the latest handleSend
+  const handleSendRef = useRef(null);
 
-  // Core recognition setup, extracted so it can be reused for auto-restart
-  const startListening = useCallback(() => {
+  // startListening is stored in a ref so onend can recursively restart it
+  startListeningRef.current = () => {
     const SpeechRecognition = window.webkitSpeechRecognition || window.SpeechRecognition;
-    if (!SpeechRecognition) {
-      alert('Speech recognition is not supported in this browser.');
-      return;
-    }
+    if (!SpeechRecognition || !userWantsListeningRef.current) return;
+
     const recognition = new SpeechRecognition();
     recognitionRef.current = recognition;
     recognition.lang = 'he-IL';
     recognition.continuous = true;
     recognition.interimResults = false;
 
-    recognition.onstart = () => { setIsListening(true); isListeningRef.current = true; };
-    recognition.onend   = () => { setIsListening(false); isListeningRef.current = false; };
-    recognition.onerror = () => { setIsListening(false); isListeningRef.current = false; };
+    recognition.onstart = () => setIsListening(true);
+
+    recognition.onend = () => {
+      // Auto-restart as long as user wants mic on
+      if (userWantsListeningRef.current) {
+        setTimeout(() => startListeningRef.current?.(), 300);
+      } else {
+        setIsListening(false);
+      }
+    };
+
+    recognition.onerror = (e) => {
+      if (e.error === 'not-allowed' || e.error === 'audio-capture') {
+        // Permission denied — force off
+        userWantsListeningRef.current = false;
+        setIsListening(false);
+      }
+      // Other errors: onend fires next and restarts if needed
+    };
 
     recognition.onresult = (event) => {
       let resultChunk = '';
@@ -65,29 +76,24 @@ export function ChatInput({ loading, sendMessage, contextFiles, toggleContextFil
       }
     };
 
-    recognition.start();
-    textareaRef.current?.focus();
-  }, []);
+    try { recognition.start(); } catch (_) { /* ignore if already starting */ }
+  };
 
-  const startSpeechRecognition = () => {
-    if (isListeningRef.current) {
+  const toggleMic = () => {
+    if (userWantsListeningRef.current) {
+      userWantsListeningRef.current = false;
       recognitionRef.current?.stop();
-      return;
+    } else {
+      userWantsListeningRef.current = true;
+      startListeningRef.current();
+      textareaRef.current?.focus();
     }
-    startListening();
   };
 
   const handleSend = (explicitText) => {
     if (loading) return;
     const text = typeof explicitText === 'string' ? explicitText : inputText;
     if (!text.trim() && !agentState) return;
-
-    // Stop mic before sending; remember to restart after TTS finishes
-    if (isListeningRef.current) {
-      wasListeningRef.current = true;
-      recognitionRef.current?.stop();
-    }
-
     setInputText('');
     sendMessage(text);
     const ta = textareaRef.current;
@@ -98,7 +104,6 @@ export function ChatInput({ loading, sendMessage, contextFiles, toggleContextFil
     }
   };
 
-  // Keep ref always up-to-date so recognition.onresult can call the latest version
   handleSendRef.current = handleSend;
 
   const handleKeyDown = (e) => {
@@ -107,25 +112,6 @@ export function ChatInput({ loading, sendMessage, contextFiles, toggleContextFil
       handleSend();
     }
   };
-
-  // When loading ends and mic was on before sending → wait for TTS, then restart mic
-  useEffect(() => {
-    if (prevLoadingRef.current && !loading && wasListeningRef.current) {
-      const tryRestart = () => {
-        if (ttsEnabled && window.speechSynthesis?.speaking) {
-          setTimeout(tryRestart, 300);
-        } else {
-          wasListeningRef.current = false;
-          setTimeout(() => {
-            if (!isListeningRef.current) startListening();
-          }, 200);
-        }
-      };
-      // Initial delay so TTS has time to start before we check .speaking
-      setTimeout(tryRestart, 500);
-    }
-    prevLoadingRef.current = loading;
-  }, [loading, ttsEnabled, startListening]);
 
   return (
     <>
@@ -161,7 +147,7 @@ export function ChatInput({ loading, sendMessage, contextFiles, toggleContextFil
         <textarea
           ref={textareaRef}
           value={inputText}
-          onChange={handleChange}
+          onChange={(e) => setInputText(e.target.value)}
           onKeyDown={handleKeyDown}
           placeholder={agentState ? 'כתוב מה לשנות בפרומט, או השאר ריק לאישור' : 'מה נבנה עכשיו? (Shift+Enter לשורה חדשה)'}
           rows={INITIAL_LINES}
@@ -175,7 +161,7 @@ export function ChatInput({ loading, sendMessage, contextFiles, toggleContextFil
           }}
         />
         <button
-          onClick={startSpeechRecognition}
+          onClick={toggleMic}
           style={{
             background: isListening ? '#fee2e2' : '#f1f5f9',
             border: 'none', padding: '10px 12px', borderRadius: '10px',
@@ -183,7 +169,7 @@ export function ChatInput({ loading, sendMessage, contextFiles, toggleContextFil
             display: 'flex', alignItems: 'center', justifyContent: 'center',
             minHeight: '42px', transition: 'all 0.2s'
           }}
-          title={isListening ? 'עצור הקלטה' : 'הקלט הודעה'}
+          title={isListening ? 'כבה מיקרופון' : 'הדלק מיקרופון'}
         >
           {isListening ? <MicOff size={20} /> : <Mic size={20} />}
         </button>

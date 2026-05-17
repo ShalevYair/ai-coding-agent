@@ -28,7 +28,6 @@ export function useChat({ aiKey, githubToken, owner, selectedRepo, responseLengt
   const [loading, setLoading] = useState(false);
   const [pendingPlan, setPendingPlan] = useState(null);
   const [contextFiles, setContextFiles] = useState([]);
-  const [undoStack, setUndoStack] = useState([]);
   const [deepScanMode, setDeepScanMode] = useState(false);
 
   // Agent multi-step state: null | { step: number, totalSteps: number, refinedPrompt: string }
@@ -73,7 +72,6 @@ export function useChat({ aiKey, githubToken, owner, selectedRepo, responseLengt
     setPendingPlan(null);
     setContextFiles([]);
     setAgentState(null);
-    setUndoStack([]);
   };
 
   const toggleContextFile = (path) =>
@@ -290,15 +288,10 @@ export function useChat({ aiKey, githubToken, owner, selectedRepo, responseLengt
           await new Promise(resolve => setTimeout(resolve, 1000 * attempt));
         }
 
-        const res = await axios.post('/api/execute', {
+        await axios.post('/api/execute', {
           plan: pendingPlan,
           context: { owner, repo: selectedRepo }
         }, { headers: authHeaders });
-
-        // Save snapshot for undo
-        if (res.data.snapshot) {
-          setUndoStack(prev => [...prev, res.data.snapshot]);
-        }
 
         setMessages(prev => [...prev, { role: 'bot', text: '✅ בוצע! השינויים נדחפו לגיטהאב.' }]);
         setPendingPlan(null);
@@ -311,23 +304,6 @@ export function useChat({ aiKey, githubToken, owner, selectedRepo, responseLengt
 
     const retryNote = effectiveRetries > 1 ? ` (לאחר ${effectiveRetries} ניסיונות)` : '';
     setMessages(prev => [...prev, { role: 'bot', text: `❌ שגיאה בביצוע${retryNote}: ${lastError}` }]);
-    setLoading(false);
-  };
-
-  const undoLastExecution = async () => {
-    if (undoStack.length === 0) return;
-    setLoading(true);
-    const snapshot = undoStack[undoStack.length - 1];
-    try {
-      await axios.post('/api/undo', {
-        snapshot,
-        context: { owner, repo: selectedRepo }
-      }, { headers: authHeaders });
-      setUndoStack(prev => prev.slice(0, -1));
-      setMessages(prev => [...prev, { role: 'bot', text: '↩️ הגרסה הקודמת שוחזרה בהצלחה.' }]);
-    } catch (e) {
-      setMessages(prev => [...prev, { role: 'bot', text: `❌ שגיאת ביטול: ${e.response?.data?.error || e.message}` }]);
-    }
     setLoading(false);
   };
 
@@ -364,9 +340,9 @@ export function useChat({ aiKey, githubToken, owner, selectedRepo, responseLengt
 
   return {
     messages, setMessages, loading, pendingPlan, contextFiles,
-    undoStack, deepScanMode, toggleDeepScan: () => setDeepScanMode(prev => !prev),
+    deepScanMode, toggleDeepScan: () => setDeepScanMode(prev => !prev),
     clearSession, toggleContextFile, compressSession,
-    sendMessage, answerAsk, executePlan, undoLastExecution, fetchPreview,
+    sendMessage, answerAsk, executePlan, fetchPreview,
     agentState,
     showPreview, setShowPreview,
     previewData, previewLoading,

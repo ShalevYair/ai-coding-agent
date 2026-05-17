@@ -11,7 +11,6 @@ export function SideMenu({
   agentMode, cycleAgentMode,
   memoryMode, cycleMemoryMode,
   maxRetries, cycleMaxRetries,
-  onUndo, canUndo,
   deepScanMode, toggleDeepScan,
   onOpenContextFiles,
 }) {
@@ -64,15 +63,6 @@ export function SideMenu({
 
           <SideBtn icon={<RefreshCw size={20} />} label="דחוס שיחה" title="דחוס שיחה"
             onClick={compressSession} isOpen={isOpen} />
-
-          <SideBtn
-            icon={<RotateCcw size={20} />}
-            label="בטל שינוי אחרון"
-            title="שחזר גרסה קודמת מגיטהאב"
-            onClick={onUndo}
-            isOpen={isOpen}
-            disabled={!canUndo}
-          />
 
           <SideBtn
             icon={<Zap size={20} />}
@@ -232,7 +222,6 @@ export function SideMenu({
 import {
   Settings,
   Plus,
-  RotateCcw,
   RefreshCw,
   Zap,
   Map,
