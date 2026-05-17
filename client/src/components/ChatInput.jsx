@@ -1,5 +1,5 @@
 import React, { useState, useRef, useCallback, useEffect } from 'react';
-import { Send, X } from 'lucide-react';
+import { Send, X, Mic, MicOff, Paperclip } from 'lucide-react';
 
 const LINE_HEIGHT = 24;
 const MAX_LINES = 6;
@@ -104,14 +104,19 @@ export function ChatInput({ loading, sendMessage, contextFiles, toggleContextFil
           borderTop: '1px solid #bfdbfe',
           display: 'flex', flexWrap: 'wrap', gap: '5px', flexShrink: 0
         }}>
-          <span style={{ fontSize: '10px', color: '#3b82f6', fontWeight: '600', alignSelf: 'center' }}>📌 קונטקסט:</span>
+          <span style={{ 
+            fontSize: '10px', color: '#3b82f6', fontWeight: '600', 
+            alignSelf: 'center', display: 'flex', alignItems: 'center', gap: '4px' 
+          }}>
+            <Paperclip size={20} /> קונטקסט:
+          </span>
           {contextFiles.map(f => (
             <span key={f} onClick={() => toggleContextFile(f)} style={{
               background: '#dbeafe', color: '#1d4ed8', padding: '2px 7px',
               borderRadius: '99px', fontSize: '10px', fontFamily: 'JetBrains Mono, monospace',
               display: 'flex', alignItems: 'center', gap: '4px', cursor: 'pointer'
             }}>
-              {f.split('/').pop()} <X size={9} />
+              {f.split('/').pop()} <X size={20} />
             </span>
           ))}
         </div>
@@ -145,11 +150,11 @@ export function ChatInput({ loading, sendMessage, contextFiles, toggleContextFil
             border: 'none', padding: '10px 12px', borderRadius: '10px',
             cursor: 'pointer', flexShrink: 0,
             display: 'flex', alignItems: 'center', justifyContent: 'center',
-            minHeight: '42px', transition: 'all 0.2s', fontSize: '18px'
+            minHeight: '42px', transition: 'all 0.2s'
           }}
           title="הקלט הודעה"
         >
-          🎤
+          {isListening ? <MicOff size={20} /> : <Mic size={20} />}
         </button>
         <button onClick={handleSend} disabled={loading} style={{
           background: loading ? '#94a3b8' : '#3b82f6', color: '#fff',
@@ -158,7 +163,7 @@ export function ChatInput({ loading, sendMessage, contextFiles, toggleContextFil
           display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '1px',
           minWidth: '42px', minHeight: '42px', justifyContent: 'center'
         }}>
-          <Send size={16} />
+          <Send size={20} />
           {agentState && (
             <span style={{ fontSize: '9px', lineHeight: 1, fontWeight: '700' }}>
               {agentState.step + 1}/{agentState.totalSteps}
