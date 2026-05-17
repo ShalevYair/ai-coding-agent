@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { CheckCircle2 } from 'lucide-react';
 import { formatMessage } from '../utils/formatMessage';
 
-export function MessageBubble({ message: m, fontSize, executePlan, fetchPreview, answerAsk, currentMessages }) {
+export function MessageBubble({ message: m, fontSize, executePlan, fetchPreview, answerAsk, currentMessages, isExecuting }) {
   const [expandedFiles, setExpandedFiles] = useState({});
   const [expandedFunctions, setExpandedFunctions] = useState({});
 
@@ -111,13 +111,17 @@ export function MessageBubble({ message: m, fontSize, executePlan, fetchPreview,
             }}>
               👁️ תצוגה מקדימה
             </button>
-            <button onClick={executePlan} style={{
-              flex: 1, padding: '9px', background: '#10b981', color: '#fff',
-              border: 'none', borderRadius: '8px', fontWeight: 'bold', cursor: 'pointer',
-              display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '5px',
-              fontSize: '12px'
-            }}>
-              <CheckCircle2 size={15} /> אשר ביצוע
+            <button 
+              onClick={executePlan} 
+              disabled={isExecuting}
+              style={{
+                flex: 1, padding: '9px', background: isExecuting ? '#94a3b8' : '#10b981', color: '#fff',
+                border: 'none', borderRadius: '8px', fontWeight: 'bold', 
+                cursor: isExecuting ? 'not-allowed' : 'pointer',
+                display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '5px',
+                fontSize: '12px'
+              }}>
+              <CheckCircle2 size={15} /> {isExecuting ? 'מבצע...' : 'אשר ביצוע'}
             </button>
           </div>
         </div>
