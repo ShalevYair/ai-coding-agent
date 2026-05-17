@@ -69,8 +69,8 @@ export function ChatInput({ loading, sendMessage, contextFiles, toggleContextFil
       const transcript = event.results[event.results.length - 1][0].transcript;
       const currentFull = (inputText + (inputText.length > 0 ? ' ' : '') + transcript).trim();
       
-      if (currentFull.endsWith('רות')) {
-        const cleanText = currentFull.slice(0, -3).trim();
+      if (currentFull.endsWith('רות') || currentFull.endsWith('רות.')) {
+        const cleanText = currentFull.replace(/רות\.?$/, '').trim();
         setInputText(cleanText);
         stopListening();
         handleSend(cleanText);
