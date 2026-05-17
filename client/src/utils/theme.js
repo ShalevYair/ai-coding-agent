@@ -1,3 +1,8 @@
+export const theme = {
+  diffAdd: '#dcfce7',
+  diffRemove: '#fee2e2'
+};
+
 export const iconBtn = {
   background: 'none', border: 'none', cursor: 'pointer',
   fontSize: '18px', padding: '5px', borderRadius: '6px',
