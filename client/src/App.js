@@ -199,8 +199,6 @@ function App() {
         canUndo={chat.undoStack.length > 0}
         deepScanMode={chat.deepScanMode}
         toggleDeepScan={chat.toggleDeepScan}
-        ttsEnabled={ttsEnabled}
-        setTtsEnabled={setTtsEnabled}
         onOpenContextFiles={async () => { await projectData.ensureMapLoaded(); setShowContextFiles(true); }}
       />
 

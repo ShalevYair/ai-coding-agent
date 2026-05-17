@@ -14,7 +14,6 @@ export function SideMenu({
   onUndo, canUndo,
   deepScanMode, toggleDeepScan,
   onOpenContextFiles,
-  ttsEnabled, setTtsEnabled,
 }) {
   const [showConfirm, setShowConfirm] = useState(false);
   const [showRepoDropdown, setShowRepoDropdown] = useState(false);
@@ -171,15 +170,6 @@ export function SideMenu({
               </span>
             )}
           </button>
-
-          <SideBtn
-            icon={ttsEnabled ? '🔊' : '🔇'}
-            label={ttsEnabled ? 'הקראה פעילה' : 'הקראה כבויה'}
-            title={ttsEnabled ? 'ביטול הקראה קולית' : 'הפעלת הקראה קולית'}
-            onClick={() => setTtsEnabled(!ttsEnabled)}
-            isOpen={isOpen}
-            active={ttsEnabled}
-          />
 
         </div>
 
