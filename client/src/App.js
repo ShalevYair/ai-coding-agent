@@ -195,8 +195,6 @@ function App() {
         cycleMemoryMode={cycleMemoryMode}
         maxRetries={maxRetries}
         cycleMaxRetries={cycleMaxRetries}
-        onUndo={chat.undoLastExecution}
-        canUndo={chat.undoStack.length > 0}
         deepScanMode={chat.deepScanMode}
         toggleDeepScan={chat.toggleDeepScan}
         onOpenContextFiles={async () => { await projectData.ensureMapLoaded(); setShowContextFiles(true); }}

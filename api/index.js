@@ -65,6 +65,16 @@ function compressHistory(history) {
     });
 }
 
+function getTimestamp() {
+  const now = new Date();
+  const dd   = String(now.getDate()).padStart(2, '0');
+  const mm   = String(now.getMonth() + 1).padStart(2, '0');
+  const yyyy = now.getFullYear();
+  const hh   = String(now.getHours()).padStart(2, '0');
+  const min  = String(now.getMinutes()).padStart(2, '0');
+  return `${dd}${mm}${yyyy}${hh}${min}`;
+}
+
 const SKIP_FILES = new Set([
   'project_map.json', 'package-lock.json', '.gitignore', '.prettierrc.json', 'LICENSE'
 ]);
@@ -277,12 +287,21 @@ app.post('/api/execute', executeLimiter, async (req, res) => {
       return res.status(400).json({ error: "חסר owner או repo בקונטקסט." });
     }
 
-    // Capture snapshot of all affected files before making any changes (enables undo)
-    const snapshot = [];
+    // Back up each affected file to old/ before making changes
+    const timestamp = getTimestamp();
     for (const action of plan) {
       for (const file of action.affectedFiles) {
-        const content = await github.getFile(context.owner, context.repo, file);
-        snapshot.push({ path: file, content });
+        try {
+          const content = await github.getFile(context.owner, context.repo, file);
+          if (content) {
+            await github.updateFile(
+              context.owner, context.repo,
+              `old/${file}.${timestamp}`,
+              content,
+              `backup: ${file}`
+            );
+          }
+        } catch (e) { /* new file — no backup needed */ }
       }
     }
 
@@ -294,33 +313,9 @@ app.post('/api/execute', executeLimiter, async (req, res) => {
       }
     }
 
-    res.json({ success: true, snapshot });
-  } catch (e) {
-    console.error("Execution Error:", e.message);
-    res.status(500).json({ error: e.message });
-  }
-});
-
-// Undo: restore files from a snapshot captured before the last execution
-app.post('/api/undo', executeLimiter, async (req, res) => {
-  try {
-    const { github } = getServices(req);
-    const { snapshot, context } = req.body;
-
-    if (!Array.isArray(snapshot) || snapshot.length === 0) {
-      return res.status(400).json({ error: "snapshot חסר או ריק." });
-    }
-    if (!context?.owner || !context?.repo) {
-      return res.status(400).json({ error: "חסר owner או repo בקונטקסט." });
-    }
-
-    for (const { path, content } of snapshot) {
-      await github.updateFile(context.owner, context.repo, path, content, 'Undo: restore previous version');
-    }
-
     res.json({ success: true });
   } catch (e) {
-    console.error("Undo Error:", e.message);
+    console.error("Execution Error:", e.message);
     res.status(500).json({ error: e.message });
   }
 });
