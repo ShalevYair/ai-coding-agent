@@ -143,7 +143,7 @@ function App() {
       width: '100vw', // Full width of the viewport
       height: '100dvh',
       display: 'flex',
-      flexDirection: 'row',
+      flexDirection: 'row-reverse',
       background: '#f1f5f9',
       overflow: 'hidden',
       direction: 'rtl'
