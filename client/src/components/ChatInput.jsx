@@ -1,15 +1,14 @@
 import React, { useState, useRef, useCallback, useEffect } from 'react';
-import { Send, X, Mic, MicOff } from 'lucide-react';
+import { Send, X } from 'lucide-react';
 
 const LINE_HEIGHT = 24;
 const MAX_LINES = 6;
-const INITIAL_LINES = 2; // New constant for initial lines
+const INITIAL_LINES = 2;
 
 export function ChatInput({ loading, sendMessage, contextFiles, toggleContextFile, fontSize, agentState }) {
   const [inputText, setInputText] = useState('');
   const [isListening, setIsListening] = useState(false);
   const textareaRef = useRef(null);
-  const recognitionRef = useRef(null);
 
   const adjustHeight = useCallback(() => {
     const ta = textareaRef.current;
@@ -30,13 +29,15 @@ export function ChatInput({ loading, sendMessage, contextFiles, toggleContextFil
 
   const handleSend = () => {
     if (loading) return;
-    // Allow empty send when continuing an agent refinement step
     if (!inputText.trim() && !agentState) return;
     const text = inputText;
     setInputText('');
     sendMessage(text);
     const ta = textareaRef.current;
-    if (ta) { ta.style.height = LINE_HEIGHT * INITIAL_LINES + 'px'; ta.style.overflowY = 'hidden'; } // Reset to initial height
+    if (ta) { 
+      ta.style.height = LINE_HEIGHT * INITIAL_LINES + 'px'; 
+      ta.style.overflowY = 'hidden'; 
+    }
   };
 
   const handleKeyDown = (e) => {
@@ -46,13 +47,8 @@ export function ChatInput({ loading, sendMessage, contextFiles, toggleContextFil
     }
   };
 
-  const toggleListening = () => {
-    if (isListening) {
-      recognitionRef.current?.stop();
-      return;
-    }
-
-    const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+  const startSpeechRecognition = () => {
+    const SpeechRecognition = window.webkitSpeechRecognition || window.SpeechRecognition;
     if (!SpeechRecognition) {
       alert('Speech recognition is not supported in this browser.');
       return;
@@ -60,7 +56,7 @@ export function ChatInput({ loading, sendMessage, contextFiles, toggleContextFil
 
     const recognition = new SpeechRecognition();
     recognition.lang = 'he-IL';
-    recognition.continuous = true;
+    recognition.continuous = false;
     recognition.interimResults = false;
 
     recognition.onstart = () => setIsListening(true);
@@ -72,7 +68,6 @@ export function ChatInput({ loading, sendMessage, contextFiles, toggleContextFil
       setInputText(prev => prev + (prev.length > 0 ? ' ' : '') + transcript);
     };
 
-    recognitionRef.current = recognition;
     recognition.start();
   };
 
@@ -114,23 +109,22 @@ export function ChatInput({ loading, sendMessage, contextFiles, toggleContextFil
             border: '1px solid #e2e8f0', outline: 'none',
             fontSize: `${fontSize}px`, fontFamily: 'Rubik, sans-serif',
             resize: 'none', lineHeight: `${LINE_HEIGHT}px`,
-            height: `${LINE_HEIGHT * INITIAL_LINES}px`, // Updated initial height
+            height: `${LINE_HEIGHT * INITIAL_LINES}px`,
             overflowY: 'hidden', direction: 'rtl'
           }}
         />
         <button 
-          onClick={toggleListening}
+          onClick={startSpeechRecognition}
           style={{
-            background: isListening ? '#ef4444' : '#f1f5f9',
-            color: isListening ? '#fff' : '#64748b',
+            background: isListening ? '#fee2e2' : '#f1f5f9',
             border: 'none', padding: '10px 12px', borderRadius: '10px',
             cursor: 'pointer', flexShrink: 0,
             display: 'flex', alignItems: 'center', justifyContent: 'center',
-            minHeight: '42px', transition: 'all 0.2s'
+            minHeight: '42px', transition: 'all 0.2s', fontSize: '18px'
           }}
-          title={isListening ? 'הפסק הקלטה' : 'הקלט הודעה'}
+          title="הקלט הודעה"
         >
-          {isListening ? <MicOff size={18} /> : <Mic size={18} />}
+          🎤
         </button>
         <button onClick={handleSend} disabled={loading} style={{
           background: loading ? '#94a3b8' : '#3b82f6', color: '#fff',
