@@ -5,7 +5,7 @@ const LINE_HEIGHT = 24;
 const MAX_LINES = 6;
 const INITIAL_LINES = 2;
 
-export function ChatInput({ loading, sendMessage, contextFiles, toggleContextFile, fontSize, agentState }) {
+export function ChatInput({ loading, sendMessage, contextFiles, toggleContextFile, fontSize, agentState, ttsEnabled, setTtsEnabled }) {
   const [inputText, setInputText] = useState('');
   const [isListening, setIsListening] = useState(false);
   const textareaRef = useRef(null);
@@ -155,6 +155,19 @@ export function ChatInput({ loading, sendMessage, contextFiles, toggleContextFil
           title="הקלט הודעה"
         >
           {isListening ? <MicOff size={20} /> : <Mic size={20} />}
+        </button>
+        <button 
+          onClick={() => setTtsEnabled(!ttsEnabled)}
+          style={{
+            background: '#f1f5f9',
+            border: 'none', padding: '10px 12px', borderRadius: '10px',
+            cursor: 'pointer', flexShrink: 0,
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+            minHeight: '42px', transition: 'all 0.2s', fontSize: '18px'
+          }}
+          title={ttsEnabled ? "השתק הקראה" : "הפעל הקראה"}
+        >
+          {ttsEnabled ? '🔊' : '🔇'}
         </button>
         <button onClick={handleSend} disabled={loading} style={{
           background: loading ? '#94a3b8' : '#3b82f6', color: '#fff',
