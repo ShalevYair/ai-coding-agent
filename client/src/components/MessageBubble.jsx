@@ -22,15 +22,6 @@ export function MessageBubble({ message: m, fontSize, executePlan, fetchPreview,
 
   const isConfirmDisabled = isExecuting || m.planSteps?.some(step => step.status !== 'pending');
 
-  const ttsButtonStyle = {
-    width: '32px',
-    height: '32px',
-    padding: 0,
-    display: 'flex',
-    alignItems: 'center',
-    justifyContent: 'center'
-  };
-
   return (
     <div style={{
       maxWidth: '90%', padding: m.role === 'user' ? '10px 14px' : '10px 0', borderRadius: '14px',
@@ -45,7 +36,7 @@ export function MessageBubble({ message: m, fontSize, executePlan, fetchPreview,
 
       {m.hasAsk && m.askData && (
         <div style={{ marginTop: '10px', borderTop: '1px solid #cbd5e1', paddingTop: '8px' }}>
-          <div style={{ fontSize: '12px', color: '#64748b', marginBottom: '8px', fontWeight: '600' }}>
+          <div style={{ fontSize: '12px', color: '#64748b', marginBottom: '8px', fontWeight: '600', fontFamily: 'Rubik, sans-serif' }}>
             🤔 {m.askData.question}
           </div>
           <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
@@ -65,7 +56,7 @@ export function MessageBubble({ message: m, fontSize, executePlan, fetchPreview,
 
       {m.hasPlan && m.plan && (
         <div style={{ marginTop: '10px', borderTop: '1px solid #cbd5e1', paddingTop: '8px' }}>
-          <div style={{ fontSize: '11px', fontWeight: 'bold', marginBottom: '6px' }}>📁 קבצים לשינוי:</div>
+          <div style={{ fontSize: '11px', fontWeight: 'bold', marginBottom: '6px', fontFamily: 'Rubik, sans-serif' }}>📁 קבצים לשינוי:</div>
           <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', marginBottom: '10px' }}>
             {m.plan.map((action, idx) =>
               action.affectedFiles?.map((file, fi) => {
