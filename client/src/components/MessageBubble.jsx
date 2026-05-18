@@ -69,7 +69,15 @@ export function MessageBubble({ message: m, fontSize, executePlan, fetchPreview,
                         display: 'flex', justifyContent: 'space-between', alignItems: 'center'
                       }}
                     >
-                      <code style={{ fontSize: '11px', fontWeight: '600' }}>{file}</code>
+                      <code 
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          fetchPreview(m.plan, idx);
+                        }}
+                        style={{ fontSize: '11px', fontWeight: '600', textDecoration: 'underline', color: '#2563eb' }}
+                      >
+                        {file}
+                      </code>
                       <span style={{ fontSize: '10px' }}>{isFileExpanded ? '▼' : '▶'}</span>
                     </div>
                     {isFileExpanded && action.details?.filter(d => d.file === file).map((detail, di) => (
