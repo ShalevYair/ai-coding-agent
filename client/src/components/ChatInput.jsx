@@ -142,8 +142,48 @@ export function ChatInput({ loading, sendMessage, contextFiles, toggleContextFil
       <div style={{
         padding: '10px 12px', background: '#fff',
         borderTop: '1px solid #e2e8f0',
-        display: 'flex', gap: '8px', alignItems: 'flex-end', flexShrink: 0
+        display: 'flex', gap: '8px', alignItems: 'stretch', flexShrink: 0
       }}>
+        <button
+          onClick={toggleMic}
+          style={{
+            background: isListening ? '#fee2e2' : '#f1f5f9',
+            border: 'none', padding: '10px 12px', borderRadius: '10px',
+            cursor: 'pointer', flexShrink: 0,
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+            height: 'auto', minHeight: '44px', transition: 'all 0.2s'
+          }}
+          title={isListening ? 'כבה מיקרופון' : 'הדלק מיקרופון'}
+        >
+          {isListening ? <MicOff size={24} /> : <Mic size={24} />}
+        </button>
+        <button
+          onClick={() => setTtsEnabled(!ttsEnabled)}
+          style={{
+            background: ttsEnabled ? '#eff6ff' : '#f1f5f9',
+            border: 'none', padding: '10px 12px', borderRadius: '10px',
+            cursor: 'pointer', flexShrink: 0,
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+            height: 'auto', minHeight: '44px', transition: 'all 0.2s', fontSize: '24px'
+          }}
+          title={ttsEnabled ? 'השתק הקראה' : 'הפעל הקראה'}
+        >
+          {ttsEnabled ? '🔊' : '🔇'}
+        </button>
+        <button onClick={handleSend} disabled={loading} style={{
+          background: loading ? '#94a3b8' : '#3b82f6', color: '#fff',
+          border: 'none', padding: '10px 12px', borderRadius: '10px',
+          cursor: loading ? 'not-allowed' : 'pointer', flexShrink: 0,
+          display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '1px',
+          minWidth: '42px', height: 'auto', minHeight: '44px', justifyContent: 'center'
+        }}>
+          <Send size={24} />
+          {agentState && (
+            <span style={{ fontSize: '9px', lineHeight: 1, fontWeight: '700' }}>
+              {agentState.step + 1}/{agentState.totalSteps}
+            </span>
+          )}
+        </button>
         <textarea
           ref={textareaRef}
           value={inputText}
@@ -160,46 +200,6 @@ export function ChatInput({ loading, sendMessage, contextFiles, toggleContextFil
             overflowY: 'hidden', direction: 'rtl'
           }}
         />
-        <button
-          onClick={toggleMic}
-          style={{
-            background: isListening ? '#fee2e2' : '#f1f5f9',
-            border: 'none', padding: '10px 12px', borderRadius: '10px',
-            cursor: 'pointer', flexShrink: 0,
-            display: 'flex', alignItems: 'center', justifyContent: 'center',
-            minHeight: '42px', transition: 'all 0.2s'
-          }}
-          title={isListening ? 'כבה מיקרופון' : 'הדלק מיקרופון'}
-        >
-          {isListening ? <MicOff size={20} /> : <Mic size={20} />}
-        </button>
-        <button
-          onClick={() => setTtsEnabled(!ttsEnabled)}
-          style={{
-            background: ttsEnabled ? '#eff6ff' : '#f1f5f9',
-            border: 'none', padding: '10px 12px', borderRadius: '10px',
-            cursor: 'pointer', flexShrink: 0,
-            display: 'flex', alignItems: 'center', justifyContent: 'center',
-            minHeight: '42px', transition: 'all 0.2s', fontSize: '18px'
-          }}
-          title={ttsEnabled ? 'השתק הקראה' : 'הפעל הקראה'}
-        >
-          {ttsEnabled ? '🔊' : '🔇'}
-        </button>
-        <button onClick={handleSend} disabled={loading} style={{
-          background: loading ? '#94a3b8' : '#3b82f6', color: '#fff',
-          border: 'none', padding: '10px 12px', borderRadius: '10px',
-          cursor: loading ? 'not-allowed' : 'pointer', flexShrink: 0,
-          display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '1px',
-          minWidth: '42px', minHeight: '42px', justifyContent: 'center'
-        }}>
-          <Send size={20} />
-          {agentState && (
-            <span style={{ fontSize: '9px', lineHeight: 1, fontWeight: '700' }}>
-              {agentState.step + 1}/{agentState.totalSteps}
-            </span>
-          )}
-        </button>
       </div>
     </>
   );
