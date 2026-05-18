@@ -22,6 +22,15 @@ export function MessageBubble({ message: m, fontSize, executePlan, fetchPreview,
 
   const isConfirmDisabled = isExecuting || m.planSteps?.some(step => step.status !== 'pending');
 
+  const ttsButtonStyle = {
+    width: '32px',
+    height: '32px',
+    padding: 0,
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center'
+  };
+
   return (
     <div style={{
       maxWidth: '90%', padding: m.role === 'user' ? '10px 14px' : '10px 0', borderRadius: '14px',
@@ -29,7 +38,8 @@ export function MessageBubble({ message: m, fontSize, executePlan, fetchPreview,
       color: m.role === 'user' ? '#fff' : '#1e293b',
       boxShadow: m.role === 'user' ? '0 1px 2px rgba(0,0,0,0.05)' : 'none',
       border: 'none',
-      fontSize: `${fontSize}px`, lineHeight: '1.6'
+      fontSize: `${fontSize}px`, lineHeight: '1.6',
+      fontFamily: "'Rubik', sans-serif"
     }}>
       {formatMessage(m.text, m.role === 'user')}
 
