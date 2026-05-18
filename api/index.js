@@ -224,21 +224,24 @@ app.post('/api/chat', chatLimiter, async (req, res) => {
       return res.json({ response });
     }
 
-    // Dynamically fetch files mentioned in the prompt (fuzzy match)
+    // Dynamically fetch files mentioned in the prompt or history (fuzzy match)
     let dynamicContent = "";
-    const lowerPrompt = prompt.toLowerCase();
+    const combinedText = (prompt + ' ' + (history || []).map(m => m.text || '').join(' ')).toLowerCase();
+    let dynamicFilesCount = 0;
     for (const filePath of allFiles) {
+      if (dynamicFilesCount >= 10) break;
       const lowerPath = filePath.toLowerCase();
       const fileName = filePath.split('/').pop().toLowerCase();
       const fileNameNoExt = fileName.split('.').slice(0, -1).join('.').toLowerCase();
       const isRequested =
-        lowerPrompt.includes(lowerPath) ||
-        lowerPrompt.includes(fileName) ||
-        (fileNameNoExt.length > 2 && lowerPrompt.includes(fileNameNoExt));
+        combinedText.includes(lowerPath) ||
+        combinedText.includes(fileName) ||
+        (fileNameNoExt.length > 2 && combinedText.includes(fileNameNoExt));
       if (isRequested && !coreFiles.includes(filePath)) {
         try {
           const content = await github.getFile(context.owner, context.repo, filePath);
           dynamicContent += `\n--- Content of ${filePath} ---\n${content}\n`;
+          dynamicFilesCount++;
         } catch (e) {}
       }
     }
