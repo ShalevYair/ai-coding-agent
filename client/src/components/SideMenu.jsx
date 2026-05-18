@@ -161,25 +161,26 @@ export function SideMenu({
             )}
           </button>
 
+          <SideBtn
+            icon={<Key size={20} />}
+            label="הגדרות"
+            title="הגדרות"
+            onClick={onOpenSettings}
+            isOpen={isOpen}
+          />
+
         </div>
 
-        {/* Bottom — settings row with font size controls */}
-        <div style={{ padding: '4px', borderTop: '1px solid #e2e8f0' }}>
-          {isOpen ? (
-            <div style={{ display: 'flex', alignItems: 'center', gap: '4px', padding: '4px 6px' }}>
+        {/* Bottom — font size controls when open */}
+        <div style={{ padding: '4px', borderTop: isOpen ? '1px solid #e2e8f0' : 'none' }}>
+          {isOpen && (
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px', padding: '4px 6px' }}>
               <button onClick={() => changeFontSize(-1)} title="הקטן גופן" style={{
                 background: 'none', border: '1px solid #e2e8f0', cursor: 'pointer',
                 width: '28px', height: '28px', borderRadius: '6px',
                 fontSize: '15px', fontWeight: 'bold', color: '#64748b',
                 display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0
               }}>−</button>
-              <button onClick={onOpenSettings} title="הגדרות" style={{
-                ...BTN_BASE, flex: 1, justifyContent: 'center', gap: '6px',
-                padding: '5px 8px', color: '#374151', fontSize: '12px', fontWeight: '500'
-              }}>
-                <Settings size={20} />
-                <span>הגדרות</span>
-              </button>
               <button onClick={() => changeFontSize(+1)} title="הגדל גופן" style={{
                 background: 'none', border: '1px solid #e2e8f0', cursor: 'pointer',
                 width: '28px', height: '28px', borderRadius: '6px',
@@ -187,14 +188,6 @@ export function SideMenu({
                 display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0
               }}>+</button>
             </div>
-          ) : (
-            <SideBtn
-              icon={<Settings size={20} />}
-              label="הגדרות"
-              title="הגדרות"
-              onClick={onOpenSettings}
-              isOpen={false}
-            />
           )}
         </div>
       </div>
@@ -220,7 +213,7 @@ export function SideMenu({
 }
 
 import {
-  Settings,
+  Key,
   Plus,
   RefreshCw,
   Zap,
