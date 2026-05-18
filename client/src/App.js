@@ -255,6 +255,7 @@ function App() {
             executePlan={chat.executePlan}
             fetchPreview={chat.fetchPreview}
             answerAsk={chat.answerAsk}
+            darkMode={darkMode}
           />
         </div>
       </div>
@@ -268,6 +269,7 @@ function App() {
         agentState={chat.agentState}
         ttsEnabled={ttsEnabled}
         setTtsEnabled={setTtsEnabled}
+        darkMode={darkMode}
       />
 
       {/* Modals */}
