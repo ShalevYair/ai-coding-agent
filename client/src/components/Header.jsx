@@ -1,5 +1,5 @@
 import React from 'react';
-import { Settings, Github, Bot } from 'lucide-react';
+import { Settings, Github, Map } from 'lucide-react';
 import { Tooltip } from './Tooltip';
 import { RESPONSE_LENGTHS } from '../utils/constants';
 import { iconBtn } from '../utils/theme';
@@ -17,10 +17,18 @@ export function Header({
       display: 'flex', justifyContent: 'space-between', alignItems: 'center',
       flexShrink: 0
     }}>
-      <div>
-        <h1 style={{ fontSize: '15px', fontWeight: 'bold', margin: 0 }}>AI Coding Agent <Bot size={20} /></h1>
-        <div style={{ fontSize: '11px', color: '#3b82f6', fontWeight: '600' }}>
-          {selectedRepo || 'בחר פרויקט...'}
+      <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+        <img src="/Codi48.png" alt="Codi" style={{ width: '32px', height: '32px' }} />
+        <h1 style={{ fontSize: '18px', fontWeight: 'bold', margin: 0 }}>קודי</h1>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginLeft: '8px' }}>
+          <span style={{ fontSize: '12px', color: '#3b82f6', fontWeight: '600' }}>
+            {selectedRepo || 'בחר פרויקט...'}
+          </span>
+          <Tooltip text="מפת פרויקט">
+            <button style={iconBtn} onClick={fetchProjectMap}>
+              <Map size={20} />
+            </button>
+          </Tooltip>
         </div>
       </div>
 
@@ -52,9 +60,6 @@ export function Header({
           <button style={iconBtn} onClick={fetchReadme}>
             <Github size={20} />
           </button>
-        </Tooltip>
-        <Tooltip text="מפת פרויקט">
-          <button style={iconBtn} onClick={fetchProjectMap}>🗺️</button>
         </Tooltip>
         <Tooltip text="הגדרות">
           <button style={{ ...iconBtn, color: '#64748b' }} onClick={onOpenSettings}>
