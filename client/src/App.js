@@ -161,86 +161,88 @@ function App() {
       width: '100vw', // Full width of the viewport
       height: '100dvh',
       display: 'flex',
-      flexDirection: 'row-reverse',
+      flexDirection: 'column',
       background: '#f1f5f9',
       overflow: 'hidden',
       direction: 'rtl'
     }}>
 
-      {/* Right sidebar */}
-      <SideMenu
-        isOpen={sideMenuOpen}
-        setIsOpen={setSideMenuOpen}
-        messages={chat.messages}
-        clearSession={chat.clearSession}
-        compressSession={chat.compressSession}
-        onOpenLoad={savedChats.openLoad}
-        onOpenSave={savedChats.openSave}
-        autoSaveAndClear={autoSaveAndClear}
-        responseLength={responseLength}
-        cycleResponseLength={cycleResponseLength}
-        autoSave={autoSave}
-        toggleAutoSave={() => setAutoSave(p => !p)}
-        fetchProjectMap={projectData.fetchProjectMap}
-        fetchReadme={projectData.fetchReadme}
-        onOpenSettings={() => setShowSettings(true)}
-        fontSize={fontSize}
-        changeFontSize={changeFontSize}
-        selectedRepo={selectedRepo}
-        setSelectedRepo={setSelectedRepo}
-        repoList={repoList}
-        agentMode={agentMode}
-        cycleAgentMode={cycleAgentMode}
-        memoryMode={memoryMode}
-        cycleMemoryMode={cycleMemoryMode}
-        maxRetries={maxRetries}
-        cycleMaxRetries={cycleMaxRetries}
-        deepScanMode={chat.deepScanMode}
-        toggleDeepScan={chat.toggleDeepScan}
-        onOpenContextFiles={async () => { await projectData.ensureMapLoaded(); setShowContextFiles(true); }}
-      />
-
-      {/* Main content area */}
-      <div style={{
-        flex: 1,
-        display: 'flex',
-        flexDirection: 'column',
-        overflow: 'hidden',
-        minWidth: 0,
-        height: '100%'
-      }}>
-
-        {/* Mini header */}
-        <div style={{
-          padding: '10px 14px', background: '#fff',
-          borderBottom: '1px solid #e2e8f0', flexShrink: 0
-        }}>
-          <h1 style={{ fontSize: '15px', fontWeight: 'bold', margin: 0 }}>AI Coding Agent 🤖</h1>
-          <div style={{ fontSize: '11px', color: '#3b82f6', fontWeight: '600' }}>
-            {selectedRepo || 'בחר פרויקט בתפריט ←'}
-          </div>
-        </div>
-
-        <ChatWindow
+      <div style={{ flex: 1, display: 'flex', flexDirection: 'row-reverse', overflow: 'hidden' }}>
+        {/* Right sidebar */}
+        <SideMenu
+          isOpen={sideMenuOpen}
+          setIsOpen={setSideMenuOpen}
           messages={chat.messages}
-          loading={chat.loading}
+          clearSession={chat.clearSession}
+          compressSession={chat.compressSession}
+          onOpenLoad={savedChats.openLoad}
+          onOpenSave={savedChats.openSave}
+          autoSaveAndClear={autoSaveAndClear}
+          responseLength={responseLength}
+          cycleResponseLength={cycleResponseLength}
+          autoSave={autoSave}
+          toggleAutoSave={() => setAutoSave(p => !p)}
+          fetchProjectMap={projectData.fetchProjectMap}
+          fetchReadme={projectData.fetchReadme}
+          onOpenSettings={() => setShowSettings(true)}
           fontSize={fontSize}
-          executePlan={chat.executePlan}
-          fetchPreview={chat.fetchPreview}
-          answerAsk={chat.answerAsk}
+          changeFontSize={changeFontSize}
+          selectedRepo={selectedRepo}
+          setSelectedRepo={setSelectedRepo}
+          repoList={repoList}
+          agentMode={agentMode}
+          cycleAgentMode={cycleAgentMode}
+          memoryMode={memoryMode}
+          cycleMemoryMode={cycleMemoryMode}
+          maxRetries={maxRetries}
+          cycleMaxRetries={cycleMaxRetries}
+          deepScanMode={chat.deepScanMode}
+          toggleDeepScan={chat.toggleDeepScan}
+          onOpenContextFiles={async () => { await projectData.ensureMapLoaded(); setShowContextFiles(true); }}
         />
 
-        <ChatInput
-          loading={chat.loading}
-          sendMessage={(text) => chat.sendMessage(text, chat.messages)}
-          contextFiles={chat.contextFiles}
-          toggleContextFile={chat.toggleContextFile}
-          fontSize={fontSize}
-          agentState={chat.agentState}
-          ttsEnabled={ttsEnabled}
-          setTtsEnabled={setTtsEnabled}
-        />
+        {/* Main content area */}
+        <div style={{
+          flex: 1,
+          display: 'flex',
+          flexDirection: 'column',
+          overflow: 'hidden',
+          minWidth: 0,
+          height: '100%'
+        }}>
+
+          {/* Mini header */}
+          <div style={{
+            padding: '10px 14px', background: '#fff',
+            borderBottom: '1px solid #e2e8f0', flexShrink: 0
+          }}>
+            <h1 style={{ fontSize: '15px', fontWeight: 'bold', margin: 0 }}>AI Coding Agent 🤖</h1>
+            <div style={{ fontSize: '11px', color: '#3b82f6', fontWeight: '600' }}>
+              {selectedRepo || 'בחר פרויקט בתפריט ←'}
+            </div>
+          </div>
+
+          <ChatWindow
+            messages={chat.messages}
+            loading={chat.loading}
+            fontSize={fontSize}
+            executePlan={chat.executePlan}
+            fetchPreview={chat.fetchPreview}
+            answerAsk={chat.answerAsk}
+          />
+        </div>
       </div>
+
+      <ChatInput
+        loading={chat.loading}
+        sendMessage={(text) => chat.sendMessage(text, chat.messages)}
+        contextFiles={chat.contextFiles}
+        toggleContextFile={chat.toggleContextFile}
+        fontSize={fontSize}
+        agentState={chat.agentState}
+        ttsEnabled={ttsEnabled}
+        setTtsEnabled={setTtsEnabled}
+      />
 
       {/* Modals */}
       {showSettings && (
