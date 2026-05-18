@@ -157,20 +157,34 @@ export function useChat({ aiKey, githubToken, owner, selectedRepo, responseLengt
     return cfg.useContext ? contextFiles : [];
   };
 
-  const _doChat = async (prompt, historySnapshot) => {
+  const _doChat = async (prompt, historySnapshot, extraFiles = []) => {
     const usedDeepScan = deepScanMode;
-    if (usedDeepScan) setDeepScanMode(false); // auto-reset before the request goes out
+    if (usedDeepScan) setDeepScanMode(false);
     try {
+      const effectiveFiles = [...new Set([..._effectiveContextFiles(), ...extraFiles])];
       const res = await axios.post('/api/chat', {
         prompt,
         history: _sliceHistory(historySnapshot),
         context: { owner, repo: selectedRepo },
         responseLength,
-        contextFiles: _effectiveContextFiles(),
+        contextFiles: effectiveFiles,
         deepScan: usedDeepScan
       }, { headers: authHeaders });
       const aiRes = res.data.response;
-      _applyResponse(parseAIResponse(aiRes));
+      const parsed = parseAIResponse(aiRes);
+
+      // Auto-load requested files silently, then retry once
+      if (parsed.type === 'ask' && parsed.askData?._action === 'add-files-to-context' && extraFiles.length === 0) {
+        const files = parsed.askData.files || [];
+        if (files.length > 0) {
+          setContextFiles(prev => [...new Set([...prev, ...files])]);
+          setMessages(prev => [...prev, { role: 'bot', text: `📎 טוען קבצים לקונטקסט: ${files.join(', ')}` }]);
+          await _doChat(prompt, historySnapshot, files);
+          return;
+        }
+      }
+
+      _applyResponse(parsed);
       if (ttsEnabled) speakHebrew(aiRes);
     } catch (e) {
       const errorMsg = e.response?.data?.error || e.message;
