@@ -94,9 +94,6 @@ export function SideMenu({
 
           <Divider />
 
-          <SideBtn icon={<Map size={20} />} label="מפת פרויקט" title="מפת פרויקט"
-            onClick={fetchProjectMap} isOpen={isOpen} />
-
           <SideBtn icon={<FileText size={20} />} label="עזרה / README" title="עזרה / README"
             onClick={fetchReadme} isOpen={isOpen} />
 
@@ -217,7 +214,6 @@ import {
   Plus,
   RefreshCw,
   Zap,
-  Map,
   Save,
   FolderOpen,
   FileText,
