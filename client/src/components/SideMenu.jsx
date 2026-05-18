@@ -5,7 +5,11 @@ import {
   FolderOpen,
   ChevronRight,
   ChevronLeft,
-  Map
+  Map,
+  Paperclip,
+  FileText,
+  Archive,
+  Download
 } from 'lucide-react';
 
 export function SideMenu({
@@ -15,7 +19,8 @@ export function SideMenu({
   onOpenSettings,
   onOpenContextFiles,
   darkMode,
-  selectedRepo, setSelectedRepo, repoList
+  selectedRepo, setSelectedRepo, repoList,
+  onOpenLoad, compressSession, fetchReadme
 }) {
   const [showConfirm, setShowConfirm] = useState(false);
 
@@ -57,8 +62,17 @@ export function SideMenu({
 
           <SideBtn icon={<Map size={20} />} label="מפת פרויקט" title="מפת פרויקט" onClick={fetchProjectMap} isOpen={isOpen} darkMode={darkMode} />
 
-          <SideBtn icon={<FolderOpen size={20} />} label="קבצי הקשר" title="קבצי הקשר"
+          <SideBtn icon={<Paperclip size={20} />} label="קבצי הקשר" title="קבצי הקשר"
             onClick={onOpenContextFiles} isOpen={isOpen} darkMode={darkMode} />
+
+          <SideBtn icon={<Download size={20} />} label="טעינת שיחה" title="טעינת שיחה"
+            onClick={onOpenLoad} isOpen={isOpen} darkMode={darkMode} />
+
+          <SideBtn icon={<Archive size={20} />} label="דחיסת שיחה" title="דחיסת שיחה"
+            onClick={compressSession} isOpen={isOpen} darkMode={darkMode} />
+
+          <SideBtn icon={<FileText size={20} />} label="קרא README" title="קרא README"
+            onClick={fetchReadme} isOpen={isOpen} darkMode={darkMode} />
 
           <SideBtn
             icon={<Settings size={20} />}
