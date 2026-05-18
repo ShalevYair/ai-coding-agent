@@ -2,7 +2,7 @@ import React, { useRef, useEffect } from 'react';
 import { Loader2 } from 'lucide-react';
 import { MessageBubble } from './MessageBubble';
 
-export function ChatWindow({ messages, loading, fontSize, executePlan, fetchPreview, answerAsk }) {
+export function ChatWindow({ messages, loading, fontSize, executePlan, fetchPreview, answerAsk, darkMode }) {
   const chatEndRef = useRef(null);
 
   useEffect(() => {
@@ -20,6 +20,7 @@ export function ChatWindow({ messages, loading, fontSize, executePlan, fetchPrev
             fetchPreview={fetchPreview}
             answerAsk={answerAsk}
             currentMessages={messages}
+            darkMode={darkMode}
           />
         </div>
       ))}
