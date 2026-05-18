@@ -1,11 +1,12 @@
 import React, { useState, useEffect, useRef } from 'react';
 import axios from 'axios';
+import { FolderOpen } from 'lucide-react';
 
 import { useChat } from './hooks/useChat';
 import { useProjectData } from './hooks/useProjectData';
 import { useSavedChats } from './hooks/useSavedChats';
 
-import { SideMenu } from './components/SideMenu';
+import { SideMenu, RepoDropdown } from './components/SideMenu';
 import { ChatWindow } from './components/ChatWindow';
 import { ChatInput } from './components/ChatInput';
 import { SettingsModal } from './components/modals/SettingsModal';
@@ -29,8 +30,10 @@ function App() {
   const [repoList, setRepoList]           = useState([]);
   const [responseLength, setResponseLength] = useState(localStorage.getItem('response_length') || 'short');
   const [fontSize, setFontSize]           = useState(parseInt(localStorage.getItem('font_size') || '14', 10));
-  const [ttsEnabled, setTtsEnabled]       = useState(true);
+  const [ttsEnabled, setTtsEnabled]       = useState(false);
   const lastSpokenRef = useRef(null);
+  const [showRepoDropdown, setShowRepoDropdown] = useState(false);
+  const repoDropdownBtnRef = useRef(null);
 
   // ── Side menu + new feature states ────────────────────────────────────────
   const [sideMenuOpen, setSideMenuOpen]   = useState(false);
@@ -81,22 +84,6 @@ function App() {
 
   // ── Chat logic ─────────────────────────────────────────────────────────────
   const chat = useChat({ aiKey, githubToken, owner, selectedRepo, responseLength, agentMode, memoryMode, maxRetries, ttsEnabled });
-
-  useEffect(() => {
-    if (ttsEnabled && !chat.loading && chat.messages.length > 0) {
-      const lastMsg = chat.messages[chat.messages.length - 1];
-      if (lastMsg.role === 'assistant' && lastMsg !== lastSpokenRef.current) {
-        const matches = lastMsg.text.match(/[֐-׿\s, .\?!\-"']+/g);
-        const hebrewText = matches ? matches.join('') : '';
-        if (hebrewText.trim()) {
-          const utterance = new SpeechSynthesisUtterance(hebrewText);
-          utterance.lang = 'he-IL';
-          window.speechSynthesis.speak(utterance);
-        }
-        lastSpokenRef.current = lastMsg;
-      }
-    }
-  }, [chat.messages, chat.loading, ttsEnabled]);
 
   // ── Project data (README, project map) ────────────────────────────────────
   const projectData = useProjectData({ githubToken, owner, selectedRepo });
@@ -213,13 +200,40 @@ function App() {
 
           {/* Mini header */}
           <div style={{
-            padding: '10px 14px', background: '#fff',
-            borderBottom: '1px solid #e2e8f0', flexShrink: 0
+            padding: '8px 14px', background: '#fff',
+            borderBottom: '1px solid #e2e8f0', flexShrink: 0,
+            display: 'flex', alignItems: 'center', gap: '8px',
+            direction: 'rtl', position: 'relative', minHeight: '52px'
           }}>
-            <h1 style={{ fontSize: '15px', fontWeight: 'bold', margin: 0 }}>AI Coding Agent 🤖</h1>
-            <div style={{ fontSize: '11px', color: '#3b82f6', fontWeight: '600' }}>
-              {selectedRepo || 'בחר פרויקט בתפריט ←'}
-            </div>
+            <img src="/Codi48.png" alt="קודי" style={{ width: 36, height: 36, flexShrink: 0 }} />
+            <h1 style={{ fontSize: '15px', fontWeight: 'bold', margin: 0, flexShrink: 0 }}>קודי</h1>
+            <button
+              ref={repoDropdownBtnRef}
+              onClick={() => {
+                if (showRepoDropdown) { setShowRepoDropdown(false); return; }
+                const btn = repoDropdownBtnRef.current;
+                if (btn) {
+                  const rect = btn.getBoundingClientRect();
+                  setShowRepoDropdown({ top: rect.bottom + 6, right: window.innerWidth - rect.right });
+                } else {
+                  setShowRepoDropdown({ top: 58, right: 10 });
+                }
+              }}
+              style={{
+                background: showRepoDropdown ? '#eff6ff' : '#f1f5f9',
+                border: 'none', borderRadius: '8px', cursor: 'pointer',
+                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                width: '32px', height: '32px', flexShrink: 0, transition: 'background 0.15s'
+              }}
+              title="בחר פרויקט"
+            >
+              <FolderOpen size={18} />
+            </button>
+            {selectedRepo && (
+              <span style={{ fontSize: '12px', color: '#3b82f6', fontWeight: '600', flexShrink: 0 }}>
+                {selectedRepo}
+              </span>
+            )}
           </div>
 
           <ChatWindow
@@ -245,6 +259,16 @@ function App() {
       />
 
       {/* Modals */}
+      {showRepoDropdown && (
+        <RepoDropdown
+          repoList={repoList}
+          selectedRepo={selectedRepo}
+          setSelectedRepo={setSelectedRepo}
+          onClose={() => setShowRepoDropdown(false)}
+          anchor={typeof showRepoDropdown === 'object' ? showRepoDropdown : null}
+        />
+      )}
+
       {showSettings && (
         <SettingsModal
           aiKey={aiKey} setAiKey={setAiKey}
