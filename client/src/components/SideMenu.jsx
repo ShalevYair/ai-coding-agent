@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import {
+{
   Settings,
   Plus,
   FolderOpen,
@@ -65,7 +65,7 @@ export function SideMenu({
           <SideBtn icon={<Paperclip size={20} />} label="קבצי הקשר" title="קבצי הקשר"
             onClick={onOpenContextFiles} isOpen={isOpen} darkMode={darkMode} />
 
-          <SideBtn icon={<Download size={20} />} label="טעינת שיחה" title="טעינת שיחה"
+          <SideBtn icon={<FolderOpen size={20} />} label="טעינת שיחה" title="טעינת שיחה"
             onClick={onOpenLoad} isOpen={isOpen} darkMode={darkMode} />
 
           <SideBtn icon={<Archive size={20} />} label="דחיסת שיחה" title="דחיסת שיחה"
