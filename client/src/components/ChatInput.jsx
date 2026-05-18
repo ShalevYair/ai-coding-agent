@@ -5,7 +5,7 @@ const LINE_HEIGHT = 24;
 const MAX_LINES = 6;
 const INITIAL_LINES = 2;
 
-export function ChatInput({ loading, sendMessage, contextFiles, toggleContextFile, fontSize, agentState, ttsEnabled, setTtsEnabled }) {
+export function ChatInput({ loading, sendMessage, contextFiles, toggleContextFile, fontSize, agentState, ttsEnabled = false, setTtsEnabled }) {
   const [inputText, setInputText] = useState('');
   const [isListening, setIsListening] = useState(false);
   const textareaRef = useRef(null);
@@ -145,19 +145,6 @@ export function ChatInput({ loading, sendMessage, contextFiles, toggleContextFil
         display: 'flex', gap: '8px', alignItems: 'stretch', flexShrink: 0
       }}>
         <button
-          onClick={toggleMic}
-          style={{
-            background: isListening ? '#fee2e2' : '#f1f5f9',
-            border: 'none', padding: '10px 12px', borderRadius: '10px',
-            cursor: 'pointer', flexShrink: 0,
-            display: 'flex', alignItems: 'center', justifyContent: 'center',
-            height: 'auto', minHeight: '44px', transition: 'all 0.2s'
-          }}
-          title={isListening ? 'כבה מיקרופון' : 'הדלק מיקרופון'}
-        >
-          {isListening ? <MicOff size={24} /> : <Mic size={24} />}
-        </button>
-        <button
           onClick={() => setTtsEnabled(!ttsEnabled)}
           style={{
             background: ttsEnabled ? '#eff6ff' : '#f1f5f9',
@@ -170,6 +157,7 @@ export function ChatInput({ loading, sendMessage, contextFiles, toggleContextFil
         >
           {ttsEnabled ? '🔊' : '🔇'}
         </button>
+
         <button onClick={handleSend} disabled={loading} style={{
           background: loading ? '#94a3b8' : '#3b82f6', color: '#fff',
           border: 'none', padding: '10px 12px', borderRadius: '10px',
@@ -184,6 +172,7 @@ export function ChatInput({ loading, sendMessage, contextFiles, toggleContextFil
             </span>
           )}
         </button>
+
         <textarea
           ref={textareaRef}
           value={inputText}
@@ -200,6 +189,20 @@ export function ChatInput({ loading, sendMessage, contextFiles, toggleContextFil
             overflowY: 'hidden', direction: 'rtl'
           }}
         />
+
+        <button
+          onClick={toggleMic}
+          style={{
+            background: isListening ? '#fee2e2' : '#f1f5f9',
+            border: 'none', padding: '10px 12px', borderRadius: '10px',
+            cursor: 'pointer', flexShrink: 0,
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+            height: 'auto', minHeight: '44px', transition: 'all 0.2s'
+          }}
+          title={isListening ? 'כבה מיקרופון' : 'הדלק מיקרופון'}
+        >
+          {isListening ? <MicOff size={24} /> : <Mic size={24} />}
+        </button>
       </div>
     </>
   );
