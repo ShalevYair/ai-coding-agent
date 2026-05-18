@@ -15,20 +15,21 @@ export function Header({
       padding: '10px 14px', background: '#fff',
       borderBottom: '1px solid #e2e8f0',
       display: 'flex', justifyContent: 'space-between', alignItems: 'center',
-      flexShrink: 0
+      flexShrink: 0,
+      direction: 'rtl'
     }}>
       <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
         <img src="/Codi48.png" alt="Codi" style={{ width: '32px', height: '32px' }} />
         <h1 style={{ fontSize: '18px', fontWeight: 'bold', margin: 0 }}>קודי</h1>
         <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginLeft: '8px' }}>
-          <span style={{ fontSize: '12px', color: '#3b82f6', fontWeight: '600' }}>
-            {selectedRepo || 'בחר פרויקט...'}
-          </span>
           <Tooltip text="מפת פרויקט">
             <button style={iconBtn} onClick={fetchProjectMap}>
               <Map size={20} />
             </button>
           </Tooltip>
+          <span style={{ fontSize: '12px', color: '#3b82f6', fontWeight: '600' }}>
+            {selectedRepo || 'בחר פרויקט...'}
+          </span>
         </div>
       </div>
 
