@@ -292,7 +292,7 @@ function ConfirmPanel({ onSave, onSkip, onCancel }) {
 // Repo selector dropdown
 function RepoDropdown({ repoList, selectedRepo, setSelectedRepo, onClose, anchor }) {
   const style = anchor
-    ? { position: 'fixed', top: anchor.top + 'px', right: anchor.right + 'px' }
+    ? { position: 'fixed', top: anchor.top + 'px', ...(anchor.left != null ? { left: anchor.left + 'px' } : { right: anchor.right + 'px' }) }
     : { position: 'fixed', top: '50%', right: '60px', transform: 'translateY(-50%)' };
   return (
     <div style={{
