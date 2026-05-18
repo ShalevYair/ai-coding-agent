@@ -103,7 +103,6 @@ function App() {
       setIsFileContentModalOpen(true);
     } catch (error) {
       console.error('Error fetching file content for edit:', error);
-      // ייתכן שתרצה להוסיף הודעת שגיאה למשתמש
     }
   };
 
@@ -115,15 +114,12 @@ function App() {
         content: newContent,
       };
       await chat.handleExecutePlan(plan);
-      setIsFileContentModalOpen(false); // סגור את המודל לאחר השמירה
-      // ייתכן שתרצה להוסיף הודעת הצלחה או לרענן נתונים רלוונטיים
+      setIsFileContentModalOpen(false);
     } catch (error) {
       console.error('Error saving edited file:', error);
-      // ייתכן שתרצה להוסיף הודעת שגיאה למשתמש
     }
   };
 
-  // Auto-save current chat as summary, then clear session
   const autoSaveAndClear = async () => {
     if (chat.messages.length > 1) {
       await savedChats.saveChat(chat.messages, 'summary');
@@ -132,7 +128,6 @@ function App() {
   };
 
   const handleLoadChat = async (chatEntry) => {
-    // Auto-save before loading if enabled
     if (autoSave && chat.messages.length > 1) {
       await savedChats.saveChat(chat.messages, 'summary');
     }
@@ -145,10 +140,9 @@ function App() {
     }
   };
 
-  // ── Render ─────────────────────────────────────────────────────────────────
   return (
     <div style={{
-      width: '100vw', // Full width of the viewport
+      width: '100vw',
       height: '100dvh',
       display: 'flex',
       flexDirection: 'column',
@@ -158,7 +152,6 @@ function App() {
     }}>
 
       <div style={{ flex: 1, display: 'flex', flexDirection: 'row-reverse', overflow: 'hidden' }}>
-        {/* Right sidebar */}
         <SideMenu
           isOpen={sideMenuOpen}
           setIsOpen={setSideMenuOpen}
@@ -193,7 +186,6 @@ function App() {
           toggleDarkMode={toggleDarkMode}
         />
 
-        {/* Main content area */}
         <div style={{
           flex: 1,
           display: 'flex',
@@ -203,21 +195,17 @@ function App() {
           height: '100%'
         }}>
 
-          {/* Mini header */}
           <div style={{
             padding: '8px 14px', background: darkMode ? '#1e293b' : '#fff',
             borderBottom: darkMode ? '1px solid #334155' : '1px solid #e2e8f0', flexShrink: 0,
             display: 'flex', alignItems: 'center',
             direction: 'rtl', position: 'relative', minHeight: '52px'
           }}>
-            {/* Right side: logos */}
             <img src="/Codi48.png" alt="לוגו" style={{ width: 36, height: 36, flexShrink: 0 }} />
             <img src="/CODI256.png" alt="קודי" style={{ height: 32, width: 'auto', flexShrink: 0, marginRight: 6 }} />
 
-            {/* Spacer pushes left-side items to the far left */}
             <div style={{ flex: 1 }} />
 
-            {/* Left side: folder button + repo name (near side menu) */}
             <button
               ref={repoDropdownBtnRef}
               onClick={() => {
@@ -272,7 +260,6 @@ function App() {
         darkMode={darkMode}
       />
 
-      {/* Modals */}
       {showRepoDropdown && (
         <RepoDropdown
           repoList={repoList}
