@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { 
+{ 
   X, Key, Cpu, Zap, Brain, MessageSquare, RefreshCw, Search, 
   Moon, Save, Type, Database, Shield, ChevronLeft
 } from 'lucide-react';
@@ -108,7 +108,7 @@ export function SettingsModal({
   deepScan, setDeepScan,
   darkMode, setDarkMode,
   autoSave, setAutoSave,
-  fontSize, changeFontSize
+  fontSize, cycleFontSize
 }) {
 
   const sectionHeaderStyle = {
@@ -171,11 +171,11 @@ export function SettingsModal({
           <div style={sectionHeaderStyle}><Cpu size={16} /> הגדרות בינה מלאכותית</div>
           
           <div style={rowStyle}>
-            <div style={rowLabelStyle}><Zap size={18} color="#64748b" /> מצב סוכן (Agent Mode)</div>
+            <div style={rowLabelStyle}><Zap size={18} color="#64748b" /> עומק מחשבה</div>
             <CycleButton 
               value={agentMode} 
               onClick={cycleAgentMode} 
-              labels={{ true: 'פעיל', false: 'כבוי' }} 
+              labels={{ dove: '1', raven: '2', owl: '3' }} 
             />
           </div>
 
@@ -184,7 +184,7 @@ export function SettingsModal({
             <CycleButton 
               value={memoryMode} 
               onClick={cycleMemoryMode} 
-              labels={{ true: 'פעיל', false: 'כבוי' }} 
+              labels={{ cat: '🐱', elephant: '🐘', fish: '🐟' }} 
             />
           </div>
 
@@ -226,8 +226,8 @@ export function SettingsModal({
             <div style={rowLabelStyle}><Type size={18} color="#64748b" /> גודל גופן קוד</div>
             <CycleButton 
               value={fontSize} 
-              onClick={changeFontSize} 
-              labels={{ '12px': 'קטן', '14px': 'בינוני', '16px': 'גדול' }} 
+              onClick={cycleFontSize} 
+              labels={{ 12: 'קטן', 14: 'בינוני', 16: 'גדול' }} 
             />
           </div>
 
