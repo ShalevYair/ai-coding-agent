@@ -172,10 +172,10 @@ export function SettingsModal({
           
           <div style={rowStyle}>
             <div style={rowLabelStyle}><Zap size={18} color="#64748b" /> עומק מחשבה</div>
-            <CycleButton 
-              value={agentMode} 
-              onClick={cycleAgentMode} 
-              labels={{ dove: '1', raven: '2', owl: '3' }} 
+            <CycleButton
+              value={agentMode}
+              onClick={cycleAgentMode}
+              labels={{ dove: '🕊️ רגיל', raven: '🐦 כפול', owl: '🦉 משולש' }}
             />
           </div>
 
@@ -184,7 +184,7 @@ export function SettingsModal({
             <CycleButton 
               value={memoryMode} 
               onClick={cycleMemoryMode} 
-              labels={{ cat: '🐱', elephant: '🐘', fish: '🐟' }} 
+              labels={{ cat: '🐱 קצר', elephant: '🐘 ארוך', goldfish: '🐟 מינימלי' }} 
             />
           </div>
 
