@@ -150,10 +150,10 @@ export function ChatInput({ loading, sendMessage, contextFiles, toggleContextFil
           onClick={toggleMic}
           style={{
             background: isListening ? '#fee2e2' : '#f1f5f9',
-            border: 'none', padding: '10px 12px', borderRadius: '10px',
+            border: 'none', padding: 0, borderRadius: '10px',
             cursor: 'pointer', flexShrink: 0,
             display: 'flex', alignItems: 'center', justifyContent: 'center',
-            height: 'auto', minHeight: '44px', transition: 'all 0.2s'
+            width: '48px', height: '48px', transition: 'all 0.2s'
           }}
           title={isListening ? 'כבה מיקרופון' : 'הדלק מיקרופון'}
         >
@@ -170,7 +170,7 @@ export function ChatInput({ loading, sendMessage, contextFiles, toggleContextFil
           style={{
             flex: 1, padding: '10px 12px', borderRadius: '10px',
             border: '1px solid #e2e8f0', outline: 'none',
-            fontSize: `${fontSize}px`, fontFamily: 'Rubik, sans-serif',
+            fontSize: `${fontSize}px`, fontFamily: "'Rubik', sans-serif",
             resize: 'none', lineHeight: `${LINE_HEIGHT}px`,
             height: `${LINE_HEIGHT * INITIAL_LINES}px`,
             overflowY: 'hidden', direction: 'rtl'
@@ -179,10 +179,10 @@ export function ChatInput({ loading, sendMessage, contextFiles, toggleContextFil
 
         <button onClick={handleSend} disabled={loading} style={{
           background: loading ? '#94a3b8' : '#3b82f6', color: '#fff',
-          border: 'none', padding: '10px 12px', borderRadius: '10px',
+          border: 'none', padding: 0, borderRadius: '10px',
           cursor: loading ? 'not-allowed' : 'pointer', flexShrink: 0,
-          display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '1px',
-          minWidth: '42px', height: 'auto', minHeight: '44px', justifyContent: 'center'
+          display: 'flex', flexDirection: 'column', alignItems: 'center',
+          justifyContent: 'center', width: '48px', height: '48px', gap: '1px'
         }}>
           <Send size={24} />
           {agentState && (
