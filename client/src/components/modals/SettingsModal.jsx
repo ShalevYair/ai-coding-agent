@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { 
   X, Key, Cpu, Zap, Brain, MessageSquare, RefreshCw, Search, 
-  Moon, Save, Type, Upload, FileArchive, FileText, Database, Shield, ChevronLeft
+  Moon, Save, Type, Database, Shield, ChevronLeft
 } from 'lucide-react';
 import { modalOverlay, modalCard } from '../../utils/theme';
 
@@ -33,6 +33,34 @@ const Toggle = ({ checked, onChange }) => (
     }} />
   </div>
 );
+
+const CycleButton = ({ value, onClick, labels }) => {
+  const [hover, setHover] = useState(false);
+  const displayValue = labels ? labels[value] : value;
+  
+  return (
+    <button 
+      onClick={onClick}
+      onMouseEnter={() => setHover(true)}
+      onMouseLeave={() => setHover(false)}
+      style={{
+        background: hover ? '#334155' : '#1e293b',
+        color: '#f8fafc',
+        border: '1px solid #334155',
+        borderRadius: '8px',
+        padding: '6px 14px',
+        fontSize: '13px',
+        cursor: 'pointer',
+        transition: 'all 0.2s ease',
+        minWidth: '80px',
+        textAlign: 'center',
+        outline: 'none'
+      }}
+    >
+      {displayValue}
+    </button>
+  );
+};
 
 const ConnectionInput = ({ icon: Icon, value, onChange, placeholder, type = "password" }) => {
   const [focused, setFocused] = useState(false);
@@ -69,49 +97,18 @@ const ConnectionInput = ({ icon: Icon, value, onChange, placeholder, type = "pas
   );
 };
 
-const ToolButton = ({ icon: Icon, children, fullWidth, onClick }) => {
-  const [hover, setHover] = useState(false);
-  return (
-    <button 
-      onClick={onClick}
-      onMouseEnter={() => setHover(true)}
-      onMouseLeave={() => setHover(false)}
-      style={{
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'center',
-        gap: '10px',
-        padding: '12px',
-        background: hover ? 'rgba(59, 130, 246, 0.1)' : 'rgba(30, 41, 59, 0.5)',
-        border: `1px solid ${hover ? '#3b82f6' : '#334155'}`,
-        borderRadius: '10px',
-        color: hover ? '#60a5fa' : '#cbd5e1',
-        cursor: 'pointer',
-        fontSize: '13px',
-        transition: 'all 0.2s ease',
-        gridColumn: fullWidth ? 'span 2' : 'auto',
-        fontWeight: '500'
-      }}
-    >
-      <Icon size={16} />
-      {children}
-    </button>
-  );
-};
-
 export function SettingsModal({ 
   aiKey, setAiKey, 
   githubToken, setGithubToken, 
   owner, onClose,
-  agentMode, setAgentMode,
-  memoryMode, setMemoryMode,
-  responseLength, setResponseLength,
-  maxRetries, setMaxRetries,
+  agentMode, cycleAgentMode,
+  memoryMode, cycleMemoryMode,
+  responseLength, cycleResponseLength,
+  maxRetries, cycleMaxRetries,
   deepScan, setDeepScan,
   darkMode, setDarkMode,
   autoSave, setAutoSave,
-  fontSize, setFontSize,
-  onLoadChat, onCompressProject, onReadReadme
+  fontSize, changeFontSize
 }) {
 
   const sectionHeaderStyle = {
@@ -146,17 +143,6 @@ export function SettingsModal({
     fontWeight: '500'
   };
 
-  const selectStyle = {
-    background: '#1e293b',
-    color: '#f8fafc',
-    border: '1px solid #334155',
-    borderRadius: '8px',
-    padding: '6px 10px',
-    fontSize: '13px',
-    outline: 'none',
-    cursor: 'pointer'
-  };
-
   return (
     <div style={{ ...modalOverlay, direction: 'rtl', backdropFilter: 'blur(8px)' }} onClick={onClose}>
       <div 
@@ -182,41 +168,40 @@ export function SettingsModal({
 
         <div style={{ padding: '8px 24px 24px 24px', overflowY: 'auto', flex: 1 }}>
           
-          <div style={sectionHeaderStyle}><FileArchive size={16} /> כלי ניהול ופרויקט</div>
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px', marginTop: '4px' }}>
-            <ToolButton icon={Upload} onClick={onLoadChat}>טעינת צ'אט</ToolButton>
-            <ToolButton icon={FileArchive} onClick={onCompressProject}>דחיסת פרויקט</ToolButton>
-            <ToolButton icon={FileText} fullWidth onClick={onReadReadme}>קרא README.md</ToolButton>
-          </div>
-
           <div style={sectionHeaderStyle}><Cpu size={16} /> הגדרות בינה מלאכותית</div>
           
           <div style={rowStyle}>
             <div style={rowLabelStyle}><Zap size={18} color="#64748b" /> מצב סוכן (Agent Mode)</div>
-            <Toggle checked={agentMode} onChange={setAgentMode} />
+            <CycleButton 
+              value={agentMode} 
+              onClick={cycleAgentMode} 
+              labels={{ true: 'פעיל', false: 'כבוי' }} 
+            />
           </div>
 
           <div style={rowStyle}>
             <div style={rowLabelStyle}><Brain size={18} color="#64748b" /> זיכרון הקשר ארוך</div>
-            <Toggle checked={memoryMode} onChange={setMemoryMode} />
+            <CycleButton 
+              value={memoryMode} 
+              onClick={cycleMemoryMode} 
+              labels={{ true: 'פעיל', false: 'כבוי' }} 
+            />
           </div>
 
           <div style={rowStyle}>
-            <div style={rowLabelStyle}><MessageSquare size={18} color="#64748b" /> אורך תגובה מקסימלי</div>
-            <select style={selectStyle} value={responseLength} onChange={(e) => setResponseLength(e.target.value)}>
-              <option value="short">תמציתי</option>
-              <option value="medium">מאוזן</option>
-              <option value="long">מפורט</option>
-            </select>
+            <div style={rowLabelStyle}><MessageSquare size={18} color="#64748b" /> אורך תשובה</div>
+            <CycleButton 
+              value={responseLength} 
+              onClick={cycleResponseLength} 
+              labels={{ short: 'תמציתי', medium: 'מאוזן', long: 'מפורט' }} 
+            />
           </div>
 
           <div style={rowStyle}>
-            <div style={rowLabelStyle}><RefreshCw size={18} color="#64748b" /> ניסיונות קריאה חוזרים</div>
-            <input 
-              type="number" 
-              style={{ ...selectStyle, width: '50px' }} 
+            <div style={rowLabelStyle}><RefreshCw size={18} color="#64748b" /> ניסיונות תיקון מקס'</div>
+            <CycleButton 
               value={maxRetries} 
-              onChange={(e) => setMaxRetries(parseInt(e.target.value))} 
+              onClick={cycleMaxRetries} 
             />
           </div>
 
@@ -239,11 +224,11 @@ export function SettingsModal({
 
           <div style={rowStyle}>
             <div style={rowLabelStyle}><Type size={18} color="#64748b" /> גודל גופן קוד</div>
-            <select style={selectStyle} value={fontSize} onChange={(e) => setFontSize(e.target.value)}>
-              <option value="12px">קטן</option>
-              <option value="14px">בינוני</option>
-              <option value="16px">גדול</option>
-            </select>
+            <CycleButton 
+              value={fontSize} 
+              onClick={changeFontSize} 
+              labels={{ '12px': 'קטן', '14px': 'בינוני', '16px': 'גדול' }} 
+            />
           </div>
 
           <div style={sectionHeaderStyle}><Database size={16} /> חיבור ומפתחות גישה</div>
