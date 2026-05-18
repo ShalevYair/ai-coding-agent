@@ -290,7 +290,7 @@ function App() {
           toggleDarkMode={toggleDarkMode}
           fontSize={fontSize}
           cycleFontSize={cycleFontSize}
-          onOpenLoad={savedChats.openLoad}
+          onOpenLoad={() => savedChats.setShowLoadModal(true)}
           compressSession={chat.compressSession}
           fetchReadme={projectData.fetchReadme}
           deepScanMode={chat.deepScanMode}
