@@ -38,7 +38,7 @@ function FileDescriptionPopup({ file, description, onClose }) {
 export function ProjectMapModal({ mapData, mapLoading, mapRefreshing, selectedRepo, selectedMapFile, setSelectedMapFile, contextFiles, toggleContextFile, onClose, onRefresh }) {
   return (
     <>
-      <div style={modalOverlay} onClick={onClose}>
+      <div style={{ ...modalOverlay, alignItems: 'flex-start', justifyContent: 'flex-start', paddingTop: '60px' }} onClick={onClose}>
         <div style={modalCard('560px', '85vh')} onClick={e => e.stopPropagation()}>
           <div style={{
             padding: '14px 18px', borderBottom: '1px solid #e2e8f0',
