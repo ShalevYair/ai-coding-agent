@@ -34,6 +34,7 @@ function App() {
   const lastSpokenRef = useRef(null);
   const [showRepoDropdown, setShowRepoDropdown] = useState(false);
   const repoDropdownBtnRef = useRef(null);
+  const [darkMode, setDarkMode]           = useState(localStorage.getItem('dark_mode') === 'true');
 
   // ── Side menu + new feature states ────────────────────────────────────────
   const [sideMenuOpen, setSideMenuOpen]   = useState(false);
@@ -62,6 +63,7 @@ function App() {
   useEffect(() => { localStorage.setItem('agent_mode',      agentMode);       }, [agentMode]);
   useEffect(() => { localStorage.setItem('memory_mode',     memoryMode);      }, [memoryMode]);
   useEffect(() => { localStorage.setItem('max_retries',     maxRetries);      }, [maxRetries]);
+  useEffect(() => { localStorage.setItem('dark_mode',      darkMode);         }, [darkMode]);
 
   useEffect(() => {
     if (!aiKey || !githubToken || !selectedRepo) setShowSettings(true);
@@ -81,6 +83,7 @@ function App() {
   const cycleMemoryMode     = () => setMemoryMode(prev => MEMORY_MODES[prev].next);
   const cycleMaxRetries     = () => setMaxRetries(prev => MAX_RETRIES_CYCLE[prev] || 3);
   const changeFontSize      = (delta) => setFontSize(prev => Math.min(20, Math.max(11, prev + delta)));
+  const toggleDarkMode      = () => setDarkMode(prev => !prev);
 
   // ── Chat logic ─────────────────────────────────────────────────────────────
   const chat = useChat({ aiKey, githubToken, owner, selectedRepo, responseLength, agentMode, memoryMode, maxRetries, ttsEnabled });
@@ -149,7 +152,7 @@ function App() {
       height: '100dvh',
       display: 'flex',
       flexDirection: 'column',
-      background: '#f1f5f9',
+      background: darkMode ? '#0f172a' : '#f1f5f9',
       overflow: 'hidden',
       direction: 'rtl'
     }}>
@@ -186,6 +189,8 @@ function App() {
           deepScanMode={chat.deepScanMode}
           toggleDeepScan={chat.toggleDeepScan}
           onOpenContextFiles={async () => { await projectData.ensureMapLoaded(); setShowContextFiles(true); }}
+          darkMode={darkMode}
+          toggleDarkMode={toggleDarkMode}
         />
 
         {/* Main content area */}
@@ -200,8 +205,8 @@ function App() {
 
           {/* Mini header */}
           <div style={{
-            padding: '8px 14px', background: '#fff',
-            borderBottom: '1px solid #e2e8f0', flexShrink: 0,
+            padding: '8px 14px', background: darkMode ? '#1e293b' : '#fff',
+            borderBottom: darkMode ? '1px solid #334155' : '1px solid #e2e8f0', flexShrink: 0,
             display: 'flex', alignItems: 'center',
             direction: 'rtl', position: 'relative', minHeight: '52px'
           }}>
@@ -336,7 +341,7 @@ function App() {
           savedChats={savedChats.savedChats}
           loadListLoading={savedChats.loadListLoading}
           onLoad={handleLoadChat}
-          onClose={() => savedChats.setShowLoadModal(false)}
+          onClose={() => savedChats.setShowSaveModal(false)}
         />
       )}
 
