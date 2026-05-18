@@ -3,7 +3,7 @@ import {
   X, Key, Cpu, Zap, Brain, MessageSquare, RefreshCw, Search, 
   Moon, Save, Type, Upload, FileArchive, FileText, Database, Shield, ChevronLeft
 } from 'lucide-react';
-import { modalOverlay, modalCard, labelStyle, modalInputStyle } from '../../utils/theme';
+import { modalOverlay, modalCard } from '../../utils/theme';
 
 const Toggle = ({ checked, onChange }) => (
   <div 
@@ -27,7 +27,7 @@ const Toggle = ({ checked, onChange }) => (
       backgroundColor: '#fff',
       borderRadius: '50%',
       position: 'absolute',
-      right: checked ? '24px' : '4px',
+      left: checked ? '24px' : '4px',
       transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
       boxShadow: '0 2px 4px rgba(0,0,0,0.2)'
     }} />
@@ -69,10 +69,11 @@ const ConnectionInput = ({ icon: Icon, value, onChange, placeholder, type = "pas
   );
 };
 
-const ToolButton = ({ icon: Icon, children, fullWidth }) => {
+const ToolButton = ({ icon: Icon, children, fullWidth, onClick }) => {
   const [hover, setHover] = useState(false);
   return (
     <button 
+      onClick={onClick}
       onMouseEnter={() => setHover(true)}
       onMouseLeave={() => setHover(false)}
       style={{
@@ -98,25 +99,20 @@ const ToolButton = ({ icon: Icon, children, fullWidth }) => {
   );
 };
 
-export function SettingsModal({ aiKey, setAiKey, githubToken, setGithubToken, owner, onClose }) {
-  const [settings, setSettings] = useState({
-    agentMode: true,
-    memory: true,
-    responseLength: 'medium',
-    maxRetries: 3,
-    deepScan: false,
-    darkMode: true,
-    autoSave: true,
-    fontSize: '14px'
-  });
-
-  const toggleSetting = (key) => {
-    setSettings(prev => ({ ...prev, [key]: !prev[key] }));
-  };
-
-  const updateSetting = (key, value) => {
-    setSettings(prev => ({ ...prev, [key]: value }));
-  };
+export function SettingsModal({ 
+  aiKey, setAiKey, 
+  githubToken, setGithubToken, 
+  owner, onClose,
+  agentMode, setAgentMode,
+  memoryMode, setMemoryMode,
+  responseLength, setResponseLength,
+  maxRetries, setMaxRetries,
+  deepScan, setDeepScan,
+  darkMode, setDarkMode,
+  autoSave, setAutoSave,
+  fontSize, setFontSize,
+  onLoadChat, onCompressProject, onReadReadme
+}) {
 
   const sectionHeaderStyle = {
     fontSize: '13px',
@@ -186,6 +182,70 @@ export function SettingsModal({ aiKey, setAiKey, githubToken, setGithubToken, ow
 
         <div style={{ padding: '8px 24px 24px 24px', overflowY: 'auto', flex: 1 }}>
           
+          <div style={sectionHeaderStyle}><FileArchive size={16} /> כלי ניהול ופרויקט</div>
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px', marginTop: '4px' }}>
+            <ToolButton icon={Upload} onClick={onLoadChat}>טעינת צ'אט</ToolButton>
+            <ToolButton icon={FileArchive} onClick={onCompressProject}>דחיסת פרויקט</ToolButton>
+            <ToolButton icon={FileText} fullWidth onClick={onReadReadme}>קרא README.md</ToolButton>
+          </div>
+
+          <div style={sectionHeaderStyle}><Cpu size={16} /> הגדרות בינה מלאכותית</div>
+          
+          <div style={rowStyle}>
+            <div style={rowLabelStyle}><Zap size={18} color="#64748b" /> מצב סוכן (Agent Mode)</div>
+            <Toggle checked={agentMode} onChange={setAgentMode} />
+          </div>
+
+          <div style={rowStyle}>
+            <div style={rowLabelStyle}><Brain size={18} color="#64748b" /> זיכרון הקשר ארוך</div>
+            <Toggle checked={memoryMode} onChange={setMemoryMode} />
+          </div>
+
+          <div style={rowStyle}>
+            <div style={rowLabelStyle}><MessageSquare size={18} color="#64748b" /> אורך תגובה מקסימלי</div>
+            <select style={selectStyle} value={responseLength} onChange={(e) => setResponseLength(e.target.value)}>
+              <option value="short">תמציתי</option>
+              <option value="medium">מאוזן</option>
+              <option value="long">מפורט</option>
+            </select>
+          </div>
+
+          <div style={rowStyle}>
+            <div style={rowLabelStyle}><RefreshCw size={18} color="#64748b" /> ניסיונות קריאה חוזרים</div>
+            <input 
+              type="number" 
+              style={{ ...selectStyle, width: '50px' }} 
+              value={maxRetries} 
+              onChange={(e) => setMaxRetries(parseInt(e.target.value))} 
+            />
+          </div>
+
+          <div style={rowStyle}>
+            <div style={rowLabelStyle}><Search size={18} color="#64748b" /> סריקת קבצים עמוקה</div>
+            <Toggle checked={deepScan} onChange={setDeepScan} />
+          </div>
+
+          <div style={sectionHeaderStyle}><Moon size={16} /> ממשק וחזותיות</div>
+          
+          <div style={rowStyle}>
+            <div style={rowLabelStyle}><Moon size={18} color="#64748b" /> מצב כהה (Dark Mode)</div>
+            <Toggle checked={darkMode} onChange={setDarkMode} />
+          </div>
+
+          <div style={rowStyle}>
+            <div style={rowLabelStyle}><Save size={18} color="#64748b" /> שמירה אוטומטית</div>
+            <Toggle checked={autoSave} onChange={setAutoSave} />
+          </div>
+
+          <div style={rowStyle}>
+            <div style={rowLabelStyle}><Type size={18} color="#64748b" /> גודל גופן קוד</div>
+            <select style={selectStyle} value={fontSize} onChange={(e) => setFontSize(e.target.value)}>
+              <option value="12px">קטן</option>
+              <option value="14px">בינוני</option>
+              <option value="16px">גדול</option>
+            </select>
+          </div>
+
           <div style={sectionHeaderStyle}><Database size={16} /> חיבור ומפתחות גישה</div>
           <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
             <div>
@@ -226,65 +286,6 @@ export function SettingsModal({ aiKey, setAiKey, githubToken, setGithubToken, ow
               מחובר כ: {owner}
             </div>
           )}
-
-          <div style={sectionHeaderStyle}><Cpu size={16} /> הגדרות בינה מלאכותית</div>
-          
-          <div style={rowStyle}>
-            <div style={rowLabelStyle}><Zap size={18} color="#64748b" /> מצב סוכן (Agent Mode)</div>
-            <Toggle checked={settings.agentMode} onChange={() => toggleSetting('agentMode')} />
-          </div>
-
-          <div style={rowStyle}>
-            <div style={rowLabelStyle}><Brain size={18} color="#64748b" /> זיכרון הקשר ארוך</div>
-            <Toggle checked={settings.memory} onChange={() => toggleSetting('memory')} />
-          </div>
-
-          <div style={rowStyle}>
-            <div style={rowLabelStyle}><MessageSquare size={18} color="#64748b" /> אורך תגובה מקסימלי</div>
-            <select style={selectStyle} value={settings.responseLength} onChange={(e) => updateSetting('responseLength', e.target.value)}>
-              <option value="short">תמציתי</option>
-              <option value="medium">מאוזן</option>
-              <option value="long">מפורט</option>
-            </select>
-          </div>
-
-          <div style={rowStyle}>
-            <div style={rowLabelStyle}><RefreshCw size={18} color="#64748b" /> ניסיונות קריאה חוזרים</div>
-            <input type="number" style={{ ...selectStyle, width: '50px' }} value={settings.maxRetries} onChange={(e) => updateSetting('maxRetries', e.target.value)} />
-          </div>
-
-          <div style={rowStyle}>
-            <div style={rowLabelStyle}><Search size={18} color="#64748b" /> סריקת קבצים עמוקה</div>
-            <Toggle checked={settings.deepScan} onChange={() => toggleSetting('deepScan')} />
-          </div>
-
-          <div style={sectionHeaderStyle}><Moon size={16} /> ממשק וחזותיות</div>
-          
-          <div style={rowStyle}>
-            <div style={rowLabelStyle}><Moon size={18} color="#64748b" /> מצב כהה (Dark Mode)</div>
-            <Toggle checked={settings.darkMode} onChange={() => toggleSetting('darkMode')} />
-          </div>
-
-          <div style={rowStyle}>
-            <div style={rowLabelStyle}><Save size={18} color="#64748b" /> שמירה אוטומטית</div>
-            <Toggle checked={settings.autoSave} onChange={() => toggleSetting('autoSave')} />
-          </div>
-
-          <div style={rowStyle}>
-            <div style={rowLabelStyle}><Type size={18} color="#64748b" /> גודל גופן קוד</div>
-            <select style={selectStyle} value={settings.fontSize} onChange={(e) => updateSetting('fontSize', e.target.value)}>
-              <option value="12px">קטן</option>
-              <option value="14px">בינוני</option>
-              <option value="16px">גדול</option>
-            </select>
-          </div>
-
-          <div style={sectionHeaderStyle}><FileArchive size={16} /> כלים מתקדמים</div>
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px', marginTop: '4px' }}>
-            <ToolButton icon={Upload}>טעינת צ'אט</ToolButton>
-            <ToolButton icon={FileArchive}>דחיסת פרויקט</ToolButton>
-            <ToolButton icon={FileText} fullWidth>קרא README.md</ToolButton>
-          </div>
 
           <button onClick={onClose} style={{
             width: '100%', padding: '16px', background: '#3b82f6', color: '#fff',
