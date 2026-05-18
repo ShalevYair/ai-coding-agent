@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-{ 
+import { 
   X, Key, Cpu, Zap, Brain, MessageSquare, RefreshCw, Search, 
   Moon, Save, Type, Database, Shield, ChevronLeft
 } from 'lucide-react';
@@ -7,7 +7,7 @@ import { modalOverlay, modalCard } from '../../utils/theme';
 
 const Toggle = ({ checked, onChange }) => (
   <div 
-    onClick={() => onChange(!checked)}
+    onClick={onChange}
     style={{
       width: '44px',
       height: '22px',
@@ -105,9 +105,9 @@ export function SettingsModal({
   memoryMode, cycleMemoryMode,
   responseLength, cycleResponseLength,
   maxRetries, cycleMaxRetries,
-  deepScan, setDeepScan,
-  darkMode, setDarkMode,
-  autoSave, setAutoSave,
+  deepScanMode, toggleDeepScan,
+  darkMode, toggleDarkMode,
+  autoSave, toggleAutoSave,
   fontSize, cycleFontSize
 }) {
 
@@ -193,7 +193,7 @@ export function SettingsModal({
             <CycleButton 
               value={responseLength} 
               onClick={cycleResponseLength} 
-              labels={{ short: 'תמציתי', medium: 'מאוזן', long: 'מפורט' }} 
+              labels={{ short: 'תמציתי', normal: 'מאוזן', long: 'מפורט' }} 
             />
           </div>
 
@@ -207,19 +207,19 @@ export function SettingsModal({
 
           <div style={rowStyle}>
             <div style={rowLabelStyle}><Search size={18} color="#64748b" /> סריקת קבצים עמוקה</div>
-            <Toggle checked={deepScan} onChange={setDeepScan} />
+            <Toggle checked={deepScanMode} onChange={toggleDeepScan} />
           </div>
 
           <div style={sectionHeaderStyle}><Moon size={16} /> ממשק וחזותיות</div>
           
           <div style={rowStyle}>
             <div style={rowLabelStyle}><Moon size={18} color="#64748b" /> מצב כהה (Dark Mode)</div>
-            <Toggle checked={darkMode} onChange={setDarkMode} />
+            <Toggle checked={darkMode} onChange={toggleDarkMode} />
           </div>
 
           <div style={rowStyle}>
             <div style={rowLabelStyle}><Save size={18} color="#64748b" /> שמירה אוטומטית</div>
-            <Toggle checked={autoSave} onChange={setAutoSave} />
+            <Toggle checked={autoSave} onChange={toggleAutoSave} />
           </div>
 
           <div style={rowStyle}>
