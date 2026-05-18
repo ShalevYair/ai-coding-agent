@@ -18,11 +18,19 @@ export const modalOverlay = {
 };
 
 export const modalCard = (maxW = '480px', maxH = '80vh') => ({
-  background: '#fff', borderRadius: '16px',
+  background: '#1e293b', borderRadius: '16px',
   width: '100%', maxWidth: maxW,
   maxHeight: maxH, display: 'flex', flexDirection: 'column',
   boxShadow: '0 20px 25px -5px rgba(0,0,0,0.15)',
   overflow: 'hidden', position: 'relative'
+});
+
+export const darkModalCard = (maxW = '480px', maxH = '80vh') => ({
+  background: '#1e293b', borderRadius: '16px',
+  width: '100%', maxWidth: maxW,
+  maxHeight: maxH, display: 'flex', flexDirection: 'column',
+  boxShadow: '0 20px 25px -5px rgba(0,0,0,0.3)',
+  overflow: 'hidden', position: 'relative', color: '#f8fafc'
 });
 
 export const labelStyle = {
@@ -32,6 +40,7 @@ export const labelStyle = {
 
 export const modalInputStyle = {
   width: '100%', padding: '11px 12px', marginBottom: '13px',
-  borderRadius: '10px', border: '1px solid #e2e8f0',
+  borderRadius: '10px', border: '1px solid #334155',
+  background: '#0f172a', color: '#f1f5f9',
   boxSizing: 'border-box', fontSize: '14px'
 };
