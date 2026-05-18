@@ -1,0 +1,34 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>AI Coding Agent 🤖</title>
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🤖</text></svg>" />
+    <meta name="description" content="סוכן AI לפיתוח — קרא, צור ועדכן קבצים בכל ריפוזיטורי GitHub ישירות מהצ'אט" />
+    <meta property="og:title" content="AI Coding Agent 🤖" />
+    <meta property="og:description" content="סוכן AI לפיתוח — קרא, צור ועדכן קבצים בכל ריפוזיטורי GitHub ישירות מהצ'אט. מופעל על ידי Gemini 2.5 Flash." />
+    <meta property="og:type" content="website" />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Rubik:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet" />
+    <style>
+      *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+      html, body, #root { height: 100%; }
+      body {
+        font-family: 'Rubik', 'Segoe UI', Arial, sans-serif;
+        background: #f1f5f9;
+        -webkit-font-smoothing: antialiased;
+      }
+      code, pre, .mono { font-family: 'JetBrains Mono', 'Fira Code', monospace !important; }
+      ::-webkit-scrollbar { width: 5px; }
+      ::-webkit-scrollbar-track { background: transparent; }
+      ::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 99px; }
+      .animate-spin { animation: spin 1s linear infinite; }
+      @keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
+    </style>
+  </head>
+  <body>
+    <div id="root"></div>
+  </body>
+</html>
