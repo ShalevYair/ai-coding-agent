@@ -18,7 +18,7 @@ import { LoadChatModal } from './components/modals/LoadChatModal';
 import { ContextFilesModal } from './components/modals/ContextFilesModal';
 import FileContentModal from './components/modals/FileContentModal';
 
-import { RESPONSE_LENGTHS, AGENT_MODES, MEMORY_MODES, MAX_RETRIES_CYCLE, INITIAL_MESSAGE } from './utils/constants';
+import { RESPONSE_LENGTHS, AGENT_MODES, MEMORY_MODES, INITIAL_MESSAGE } from './utils/constants';
 
 function App() {
   // ── Settings state ─────────────────────────────────────────────────────────
@@ -81,8 +81,8 @@ function App() {
   const cycleResponseLength = () => setResponseLength(prev => RESPONSE_LENGTHS[prev].next);
   const cycleAgentMode      = () => setAgentMode(prev => AGENT_MODES[prev].next);
   const cycleMemoryMode     = () => setMemoryMode(prev => MEMORY_MODES[prev].next);
-  const cycleMaxRetries     = () => setMaxRetries(prev => MAX_RETRIES_CYCLE[prev] || 3);
-  const changeFontSize      = (delta) => setFontSize(prev => Math.min(20, Math.max(11, prev + delta)));
+  const cycleMaxRetries     = () => setMaxRetries(prev => (prev === 1 ? 3 : prev === 3 ? 5 : 1));
+  const cycleFontSize       = () => setFontSize(prev => (prev === 12 ? 14 : prev === 14 ? 16 : 12));
   const toggleDarkMode      = () => setDarkMode(prev => !prev);
 
   // ── Chat logic ─────────────────────────────────────────────────────────────
@@ -158,8 +158,8 @@ function App() {
           messages={chat.messages}
           clearSession={chat.clearSession}
           compressSession={chat.compressSession}
-          onOpenLoad={savedChats.openLoad}
-          onOpenSave={savedChats.openSave}
+          onOpenLoad={() => savedChats.setShowLoadModal(true)}
+          onOpenSave={() => savedChats.setShowSaveModal(true)}
           autoSaveAndClear={autoSaveAndClear}
           responseLength={responseLength}
           cycleResponseLength={cycleResponseLength}
@@ -169,7 +169,7 @@ function App() {
           fetchReadme={projectData.fetchReadme}
           onOpenSettings={() => setShowSettings(true)}
           fontSize={fontSize}
-          changeFontSize={changeFontSize}
+          cycleFontSize={cycleFontSize}
           selectedRepo={selectedRepo}
           setSelectedRepo={setSelectedRepo}
           repoList={repoList}
@@ -289,7 +289,7 @@ function App() {
           darkMode={darkMode}
           toggleDarkMode={toggleDarkMode}
           fontSize={fontSize}
-          changeFontSize={changeFontSize}
+          cycleFontSize={cycleFontSize}
           onOpenLoad={savedChats.openLoad}
           compressSession={chat.compressSession}
           fetchReadme={projectData.fetchReadme}
@@ -349,7 +349,7 @@ function App() {
           savedChats={savedChats.savedChats}
           loadListLoading={savedChats.loadListLoading}
           onLoad={handleLoadChat}
-          onClose={() => savedChats.setShowSaveModal(false)}
+          onClose={() => savedChats.setShowLoadModal(false)}
         />
       )}
 
