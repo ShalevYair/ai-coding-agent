@@ -124,7 +124,8 @@ export function ChatInput({ loading, sendMessage, contextFiles, toggleContextFil
         }}>
           <span style={{
             fontSize: '10px', color: '#3b82f6', fontWeight: '600',
-            alignSelf: 'center', display: 'flex', alignItems: 'center', gap: '4px'
+            alignSelf: 'center', display: 'flex', alignItems: 'center', gap: '4px',
+            fontFamily: 'Rubik, sans-serif'
           }}>
             <Paperclip size={20} /> קונטקסט:
           </span>
@@ -144,7 +145,7 @@ export function ChatInput({ loading, sendMessage, contextFiles, toggleContextFil
         width: '100%', margin: 0, boxSizing: 'border-box',
         padding: '10px 12px', background: '#fff',
         borderTop: '1px solid #e2e8f0',
-        display: 'flex', gap: '8px', alignItems: 'flex-end', flexShrink: 0
+        display: 'flex', gap: '8px', alignItems: 'stretch', flexShrink: 0
       }}>
         <button
           onClick={toggleMic}
@@ -153,8 +154,7 @@ export function ChatInput({ loading, sendMessage, contextFiles, toggleContextFil
             border: 'none', padding: 0, borderRadius: '10px',
             cursor: 'pointer', flexShrink: 0,
             display: 'flex', alignItems: 'center', justifyContent: 'center',
-            width: '48px', height: '48px', transition: 'all 0.2s',
-            aspectRatio: '1/1', fontFamily: 'Rubik'
+            width: '48px', height: '48px', transition: 'all 0.2s'
           }}
           title={isListening ? 'כבה מיקרופון' : 'הדלק מיקרופון'}
         >
@@ -183,8 +183,7 @@ export function ChatInput({ loading, sendMessage, contextFiles, toggleContextFil
           border: 'none', padding: 0, borderRadius: '10px',
           cursor: loading ? 'not-allowed' : 'pointer', flexShrink: 0,
           display: 'flex', flexDirection: 'column', alignItems: 'center',
-          justifyContent: 'center', width: '48px', height: '48px', gap: '1px',
-          aspectRatio: '1/1', fontFamily: 'Rubik'
+          justifyContent: 'center', width: '48px', height: '48px', gap: '1px'
         }}>
           <Send size={24} />
           {agentState && (
@@ -198,11 +197,10 @@ export function ChatInput({ loading, sendMessage, contextFiles, toggleContextFil
           onClick={() => setIsMuted(!isMuted)}
           style={{
             background: !isMuted ? '#eff6ff' : '#f1f5f9',
-            border: 'none', padding: 0, borderRadius: '10px',
+            border: 'none', padding: '10px 12px', borderRadius: '10px',
             cursor: 'pointer', flexShrink: 0,
             display: 'flex', alignItems: 'center', justifyContent: 'center',
-            width: '48px', height: '48px', transition: 'all 0.2s', fontSize: '24px',
-            aspectRatio: '1/1', fontFamily: 'Rubik'
+            height: 'auto', minHeight: '44px', transition: 'all 0.2s', fontSize: '24px'
           }}
           title={!isMuted ? 'השתק הקראה' : 'הפעל הקראה'}
         >
