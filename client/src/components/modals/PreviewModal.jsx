@@ -2,6 +2,42 @@ import React from 'react';
 import { X, Loader2, CheckCircle2 } from 'lucide-react';
 import { modalOverlay, modalCard } from '../../utils/theme';
 
+const getDiffHunks = (oldStr = '', newStr = '') => {
+  const oldLines = (oldStr || '').split('\n');
+  const newLines = (newStr || '').split('\n');
+  const diff = [];
+  let i = 0, j = 0;
+
+  while (i < oldLines.length || j < newLines.length) {
+    if (i < oldLines.length && j < newLines.length && oldLines[i] === newLines[j]) {
+      diff.push({ type: 'context', content: oldLines[i], oldLine: i + 1, newLine: j + 1 });
+      i++; j++;
+    } else if (i < oldLines.length && (j >= newLines.length || !newLines.slice(j, j + 15).includes(oldLines[i]))) {
+      diff.push({ type: 'removed', content: oldLines[i], oldLine: i + 1, newLine: null });
+      i++;
+    } else {
+      diff.push({ type: 'added', content: newLines[j], oldLine: null, newLine: j + 1 });
+      j++;
+    }
+  }
+
+  const hunks = [];
+  const context = 3;
+  let currentHunk = [];
+  
+  diff.forEach((line, idx) => {
+    const hasNearbyChange = diff.slice(Math.max(0, idx - context), idx + context + 1).some(l => l.type !== 'context');
+    if (hasNearbyChange) {
+      currentHunk.push(line);
+    } else if (currentHunk.length > 0) {
+      hunks.push(currentHunk);
+      currentHunk = [];
+    }
+  });
+  if (currentHunk.length > 0) hunks.push(currentHunk);
+  return hunks;
+};
+
 export function PreviewModal({ previewData, previewLoading, previewFileIdx, setPreviewFileIdx, previewTab, setPreviewTab, executePlan, onClose }) {
   const current = previewData[previewFileIdx];
 
@@ -49,28 +85,52 @@ export function PreviewModal({ previewData, previewLoading, previewFileIdx, setP
                 }}>
                   <code style={{ fontSize: '11px', color: '#475569' }}>{current.file}</code>
                   <div style={{ display: 'flex', gap: '4px' }}>
-                    {['before', 'after'].map(tab => (
+                    {['diff', 'before', 'after'].map(tab => (
                       <button key={tab} onClick={() => setPreviewTab(tab)} style={{
                         padding: '3px 10px', fontSize: '11px', cursor: 'pointer',
                         borderRadius: '5px', border: '1px solid #e2e8f0',
                         background: previewTab === tab ? '#3b82f6' : '#fff',
                         color: previewTab === tab ? '#fff' : '#64748b'
                       }}>
-                        {tab === 'before' ? 'לפני' : 'אחרי'}
+                        {tab === 'diff' ? 'שינויים' : tab === 'before' ? 'לפני' : 'אחרי'}
                       </button>
                     ))}
                   </div>
                 </div>
 
-                <div style={{ flex: 1, overflowY: 'auto' }}>
-                  <pre style={{
-                    margin: 0, padding: '14px 16px',
-                    background: '#1e293b', color: '#e2e8f0',
-                    fontSize: '12px', lineHeight: '1.65',
-                    fontFamily: 'JetBrains Mono, monospace', minHeight: '100%'
-                  }}>
-                    {previewTab === 'before' ? (current.current || '// קובץ חדש') : current.proposed}
-                  </pre>
+                <div style={{ flex: 1, overflowY: 'auto', background: '#1e293b' }}>
+                  {previewTab === 'diff' ? (
+                    <div style={{ padding: '14px 16px', fontFamily: 'JetBrains Mono, monospace' }}>
+                      {getDiffHunks(current.current, current.proposed).map((hunk, hi) => (
+                        <div key={hi} style={{ marginBottom: '20px', border: '1px solid #334155', borderRadius: '4px', overflow: 'hidden' }}>
+                          {hunk.map((line, li) => (
+                            <div key={li} style={{
+                              display: 'flex', fontSize: '12px', lineHeight: '1.6',
+                              background: line.type === 'added' ? 'rgba(16, 185, 129, 0.15)' : line.type === 'removed' ? 'rgba(239, 68, 68, 0.15)' : 'transparent'
+                            }}>
+                              <div style={{ width: '35px', textAlign: 'right', paddingRight: '10px', color: '#64748b', fontSize: '10px', userSelect: 'none' }}>{line.oldLine || ''}</div>
+                              <div style={{ width: '35px', textAlign: 'right', paddingRight: '10px', color: '#64748b', fontSize: '10px', userSelect: 'none' }}>{line.newLine || ''}</div>
+                              <div style={{
+                                flex: 1, whiteSpace: 'pre-wrap', paddingLeft: '8px',
+                                color: line.type === 'added' ? '#34d399' : line.type === 'removed' ? '#f87171' : '#e2e8f0'
+                              }}>
+                                {line.type === 'added' ? '+' : line.type === 'removed' ? '-' : ' '}{line.content}
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      ))}
+                    </div>
+                  ) : (
+                    <pre style={{
+                      margin: 0, padding: '14px 16px',
+                      background: '#1e293b', color: '#e2e8f0',
+                      fontSize: '12px', lineHeight: '1.65',
+                      fontFamily: 'JetBrains Mono, monospace', minHeight: '100%'
+                    }}>
+                      {previewTab === 'before' ? (current.current || '// קובץ חדש') : current.proposed}
+                    </pre>
+                  )}
                 </div>
 
                 <div style={{ padding: '10px 14px', borderTop: '1px solid #e2e8f0', flexShrink: 0, direction: 'rtl' }}>
