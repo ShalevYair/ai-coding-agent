@@ -202,11 +202,17 @@ function App() {
           <div style={{
             padding: '8px 14px', background: '#fff',
             borderBottom: '1px solid #e2e8f0', flexShrink: 0,
-            display: 'flex', alignItems: 'center', gap: '8px',
+            display: 'flex', alignItems: 'center',
             direction: 'rtl', position: 'relative', minHeight: '52px'
           }}>
-            <img src="/Codi48.png" alt="קודי" style={{ width: 36, height: 36, flexShrink: 0 }} />
-            <h1 style={{ fontSize: '15px', fontWeight: 'bold', margin: 0, flexShrink: 0 }}>קודי</h1>
+            {/* Right side: logos */}
+            <img src="/Codi48.png" alt="לוגו" style={{ width: 36, height: 36, flexShrink: 0 }} />
+            <img src="/CODI256.png" alt="קודי" style={{ height: 32, width: 'auto', flexShrink: 0, marginRight: 6 }} />
+
+            {/* Spacer pushes left-side items to the far left */}
+            <div style={{ flex: 1 }} />
+
+            {/* Left side: folder button + repo name (near side menu) */}
             <button
               ref={repoDropdownBtnRef}
               onClick={() => {
@@ -214,23 +220,24 @@ function App() {
                 const btn = repoDropdownBtnRef.current;
                 if (btn) {
                   const rect = btn.getBoundingClientRect();
-                  setShowRepoDropdown({ top: rect.bottom + 6, right: window.innerWidth - rect.right });
+                  setShowRepoDropdown({ top: rect.bottom + 6, left: rect.left });
                 } else {
-                  setShowRepoDropdown({ top: 58, right: 10 });
+                  setShowRepoDropdown({ top: 58, left: 60 });
                 }
               }}
               style={{
                 background: showRepoDropdown ? '#eff6ff' : '#f1f5f9',
                 border: 'none', borderRadius: '8px', cursor: 'pointer',
                 display: 'flex', alignItems: 'center', justifyContent: 'center',
-                width: '32px', height: '32px', flexShrink: 0, transition: 'background 0.15s'
+                width: '32px', height: '32px', flexShrink: 0, transition: 'background 0.15s',
+                marginLeft: 6
               }}
               title="בחר פרויקט"
             >
               <FolderOpen size={18} />
             </button>
             {selectedRepo && (
-              <span style={{ fontSize: '12px', color: '#3b82f6', fontWeight: '600', flexShrink: 0 }}>
+              <span style={{ fontSize: '12px', color: '#3b82f6', fontWeight: '600', flexShrink: 0, marginLeft: 8 }}>
                 {selectedRepo}
               </span>
             )}
