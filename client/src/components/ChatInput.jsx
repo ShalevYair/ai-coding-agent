@@ -5,7 +5,7 @@ const LINE_HEIGHT = 24;
 const MAX_LINES = 6;
 const INITIAL_LINES = 2;
 
-export function ChatInput({ loading, sendMessage, contextFiles, toggleContextFile, fontSize, agentState, ttsEnabled, setTtsEnabled }) {
+export function ChatInput({ loading, sendMessage, contextFiles, toggleContextFile, fontSize, agentState, ttsEnabled, setTtsEnabled, darkMode }) {
   const [inputText, setInputText] = useState('');
   const [isListening, setIsListening] = useState(false);
   const textareaRef = useRef(null);
@@ -117,12 +117,13 @@ export function ChatInput({ loading, sendMessage, contextFiles, toggleContextFil
     <>
       {contextFiles.length > 0 && (
         <div style={{
-          padding: '6px 12px', background: '#eff6ff',
-          borderTop: '1px solid #bfdbfe',
+          padding: '6px 12px', 
+          background: darkMode ? '#0f172a' : '#eff6ff',
+          borderTop: darkMode ? '1px solid #334155' : '1px solid #bfdbfe',
           display: 'flex', flexWrap: 'wrap', gap: '5px', flexShrink: 0
         }}>
           <span style={{
-            fontSize: '10px', color: '#3b82f6', fontWeight: '600',
+            fontSize: '10px', color: darkMode ? '#60a5fa' : '#3b82f6', fontWeight: '600',
             alignSelf: 'center', display: 'flex', alignItems: 'center', gap: '4px',
             fontFamily: 'Rubik, sans-serif'
           }}>
@@ -130,7 +131,7 @@ export function ChatInput({ loading, sendMessage, contextFiles, toggleContextFil
           </span>
           {contextFiles.map(f => (
             <span key={f} onClick={() => toggleContextFile(f)} style={{
-              background: '#dbeafe', color: '#1d4ed8', padding: '2px 7px',
+              background: darkMode ? '#334155' : '#dbeafe', color: darkMode ? '#93c5fd' : '#1d4ed8', padding: '2px 7px',
               borderRadius: '99px', fontSize: '10px', fontFamily: 'JetBrains Mono, monospace',
               display: 'flex', alignItems: 'center', gap: '4px', cursor: 'pointer'
             }}>
@@ -142,14 +143,15 @@ export function ChatInput({ loading, sendMessage, contextFiles, toggleContextFil
 
       <div style={{
         width: '100%', margin: 0, boxSizing: 'border-box',
-        padding: '10px 12px', background: '#fff',
-        borderTop: '1px solid #e2e8f0',
+        padding: '10px 12px', background: darkMode ? '#1e293b' : '#fff',
+        borderTop: darkMode ? '1px solid #334155' : '1px solid #e2e8f0',
         display: 'flex', gap: '8px', alignItems: 'stretch', flexShrink: 0
       }}>
         <button
           onClick={toggleMic}
           style={{
-            background: isListening ? '#fee2e2' : '#f1f5f9',
+            background: isListening ? (darkMode ? '#450a0a' : '#fee2e2') : (darkMode ? '#334155' : '#f1f5f9'),
+            color: darkMode ? '#f1f5f9' : 'inherit',
             border: 'none', padding: 0, borderRadius: '10px',
             cursor: 'pointer', flexShrink: 0,
             display: 'flex', alignItems: 'center', justifyContent: 'center',
@@ -169,7 +171,10 @@ export function ChatInput({ loading, sendMessage, contextFiles, toggleContextFil
           rows={INITIAL_LINES}
           style={{
             flex: 1, padding: '10px 12px', borderRadius: '10px',
-            border: '1px solid #e2e8f0', outline: 'none',
+            background: darkMode ? '#0f172a' : '#fff',
+            color: darkMode ? '#fff' : 'inherit',
+            border: darkMode ? '1px solid #334155' : '1px solid #e2e8f0',
+            outline: 'none',
             fontSize: `${fontSize}px`, fontFamily: "'Rubik', sans-serif",
             resize: 'none', lineHeight: `${LINE_HEIGHT}px`,
             height: `${LINE_HEIGHT * INITIAL_LINES}px`,
@@ -178,7 +183,7 @@ export function ChatInput({ loading, sendMessage, contextFiles, toggleContextFil
         />
 
         <button onClick={handleSend} disabled={loading} style={{
-          background: loading ? '#94a3b8' : '#3b82f6', color: '#fff',
+          background: loading ? (darkMode ? '#475569' : '#94a3b8') : '#3b82f6', color: '#fff',
           border: 'none', padding: 0, borderRadius: '10px',
           cursor: loading ? 'not-allowed' : 'pointer', flexShrink: 0,
           display: 'flex', flexDirection: 'column', alignItems: 'center',
@@ -195,7 +200,8 @@ export function ChatInput({ loading, sendMessage, contextFiles, toggleContextFil
         <button
           onClick={() => setTtsEnabled && setTtsEnabled(p => !p)}
           style={{
-            background: ttsEnabled ? '#eff6ff' : '#f1f5f9',
+            background: ttsEnabled ? (darkMode ? '#1e3a8a' : '#eff6ff') : (darkMode ? '#334155' : '#f1f5f9'),
+            color: darkMode ? '#f1f5f9' : 'inherit',
             border: 'none', padding: 0, borderRadius: '10px',
             cursor: 'pointer', flexShrink: 0,
             display: 'flex', alignItems: 'center', justifyContent: 'center',
