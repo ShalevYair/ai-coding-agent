@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { CheckCircle2 } from 'lucide-react';
 import { formatMessage } from '../utils/formatMessage';
 
-export function MessageBubble({ message: m, fontSize, executePlan, fetchPreview, answerAsk, currentMessages }) {
+export function MessageBubble({ message: m, fontSize, executePlan, fetchPreview, answerAsk, currentMessages, darkMode }) {
   const [expandedFiles, setExpandedFiles] = useState({});
   const [expandedFunctions, setExpandedFunctions] = useState({});
   const [isExecuting, setIsExecuting] = useState(false);
@@ -26,7 +26,7 @@ export function MessageBubble({ message: m, fontSize, executePlan, fetchPreview,
     <div style={{
       maxWidth: '90%', padding: m.role === 'user' ? '10px 14px' : '10px 0', borderRadius: '14px',
       background: m.role === 'user' ? '#3b82f6' : 'transparent',
-      color: m.role === 'user' ? '#fff' : '#1e293b',
+      color: m.role === 'user' ? '#fff' : (darkMode ? '#fff' : '#1e293b'),
       boxShadow: m.role === 'user' ? '0 1px 2px rgba(0,0,0,0.05)' : 'none',
       border: 'none',
       fontSize: `${fontSize}px`, lineHeight: '1.6',
@@ -36,7 +36,7 @@ export function MessageBubble({ message: m, fontSize, executePlan, fetchPreview,
 
       {m.hasAsk && m.askData && (
         <div style={{ marginTop: '10px', borderTop: '1px solid #cbd5e1', paddingTop: '8px' }}>
-          <div style={{ fontSize: '12px', color: '#64748b', marginBottom: '8px', fontWeight: '600', fontFamily: 'Rubik, sans-serif' }}>
+          <div style={{ fontSize: '12px', color: darkMode ? '#cbd5e1' : '#64748b', marginBottom: '8px', fontWeight: '600', fontFamily: 'Rubik, sans-serif' }}>
             🤔 {m.askData.question}
           </div>
           <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
@@ -56,7 +56,7 @@ export function MessageBubble({ message: m, fontSize, executePlan, fetchPreview,
 
       {m.hasPlan && m.plan && (
         <div style={{ marginTop: '10px', borderTop: '1px solid #cbd5e1', paddingTop: '8px' }}>
-          <div style={{ fontSize: '11px', fontWeight: 'bold', marginBottom: '6px', fontFamily: 'Rubik, sans-serif' }}>📁 קבצים לשינוי:</div>
+          <div style={{ fontSize: '11px', fontWeight: 'bold', marginBottom: '6px', fontFamily: 'Rubik, sans-serif', color: darkMode ? '#cbd5e1' : 'inherit' }}>📁 קבצים לשינוי:</div>
           <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', marginBottom: '10px' }}>
             {m.plan.map((action, idx) =>
               action.affectedFiles?.map((file, fi) => {
