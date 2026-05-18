@@ -289,6 +289,25 @@ function App() {
           githubToken={githubToken} setGithubToken={setGithubToken}
           owner={owner}
           onClose={() => setShowSettings(false)}
+          agentMode={agentMode}
+          cycleAgentMode={cycleAgentMode}
+          memoryMode={memoryMode}
+          cycleMemoryMode={cycleMemoryMode}
+          maxRetries={maxRetries}
+          cycleMaxRetries={cycleMaxRetries}
+          responseLength={responseLength}
+          cycleResponseLength={cycleResponseLength}
+          autoSave={autoSave}
+          toggleAutoSave={() => setAutoSave(p => !p)}
+          darkMode={darkMode}
+          toggleDarkMode={toggleDarkMode}
+          fontSize={fontSize}
+          changeFontSize={changeFontSize}
+          onOpenLoad={savedChats.openLoad}
+          compressSession={chat.compressSession}
+          fetchReadme={projectData.fetchReadme}
+          deepScanMode={chat.deepScanMode}
+          toggleDeepScan={chat.toggleDeepScan}
         />
       )}
 
