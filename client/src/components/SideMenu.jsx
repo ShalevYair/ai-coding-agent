@@ -100,6 +100,8 @@ export function SideMenu({
           <SideBtn icon={<FileText size={20} />} label="עזרה / README" title="עזרה / README"
             onClick={fetchReadme} isOpen={isOpen} darkMode={darkMode} />
 
+          <SideBtn icon={<Map size={20} />} label="מפת פרויקט" title="מפת פרויקט" onClick={fetchProjectMap} isOpen={isOpen} darkMode={darkMode} />
+
           <Divider darkMode={darkMode} />
 
           <SideBtn
@@ -221,7 +223,8 @@ import {
   ChevronRight,
   ChevronLeft,
   Moon,
-  Sun
+  Sun,
+  Map
 } from 'lucide-react';
 import { RESPONSE_LENGTHS, AGENT_MODES, MEMORY_MODES } from '../utils/constants';
 
