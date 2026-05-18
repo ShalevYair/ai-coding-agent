@@ -5,10 +5,9 @@ const LINE_HEIGHT = 24;
 const MAX_LINES = 6;
 const INITIAL_LINES = 2;
 
-export function ChatInput({ loading, sendMessage, contextFiles, toggleContextFile, fontSize, agentState }) {
+export function ChatInput({ loading, sendMessage, contextFiles, toggleContextFile, fontSize, agentState, ttsEnabled, setTtsEnabled }) {
   const [inputText, setInputText] = useState('');
   const [isListening, setIsListening] = useState(false);
-  const [isMuted, setIsMuted] = useState(true);
   const textareaRef = useRef(null);
   const recognitionRef = useRef(null);
   const userWantsListeningRef = useRef(false); // true = mic should always be on
@@ -194,17 +193,17 @@ export function ChatInput({ loading, sendMessage, contextFiles, toggleContextFil
         </button>
 
         <button
-          onClick={() => setIsMuted(!isMuted)}
+          onClick={() => setTtsEnabled && setTtsEnabled(p => !p)}
           style={{
-            background: !isMuted ? '#eff6ff' : '#f1f5f9',
-            border: 'none', padding: '10px 12px', borderRadius: '10px',
+            background: ttsEnabled ? '#eff6ff' : '#f1f5f9',
+            border: 'none', padding: 0, borderRadius: '10px',
             cursor: 'pointer', flexShrink: 0,
             display: 'flex', alignItems: 'center', justifyContent: 'center',
-            height: 'auto', minHeight: '44px', transition: 'all 0.2s', fontSize: '24px'
+            width: '48px', height: '48px', transition: 'all 0.2s', fontSize: '22px'
           }}
-          title={!isMuted ? 'השתק הקראה' : 'הפעל הקראה'}
+          title={ttsEnabled ? 'השתק הקראה' : 'הפעל הקראה'}
         >
-          {!isMuted ? '🔊' : '🔇'}
+          {ttsEnabled ? '🔊' : '🔇'}
         </button>
       </div>
     </>

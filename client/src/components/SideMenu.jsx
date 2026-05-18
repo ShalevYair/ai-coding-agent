@@ -15,7 +15,6 @@ export function SideMenu({
   onOpenContextFiles,
 }) {
   const [showConfirm, setShowConfirm] = useState(false);
-  const [showRepoDropdown, setShowRepoDropdown] = useState(false);
 
   const handleNewChatClick = () => setShowConfirm(true);
 
@@ -96,14 +95,6 @@ export function SideMenu({
 
           <SideBtn icon={<FileText size={20} />} label="עזרה / README" title="עזרה / README"
             onClick={fetchReadme} isOpen={isOpen} />
-
-          <SideBtn
-            icon={<FolderOpen size={20} />}
-            label={selectedRepo || 'בחר פרויקט'}
-            title="בחר פרויקט"
-            onClick={() => setShowRepoDropdown(true)}
-            isOpen={isOpen}
-          />
 
           <Divider />
 
@@ -196,18 +187,11 @@ export function SideMenu({
           onCancel={() => setShowConfirm(false)}
         />
       )}
-
-      {showRepoDropdown && (
-        <RepoDropdown
-          repoList={repoList}
-          selectedRepo={selectedRepo}
-          setSelectedRepo={setSelectedRepo}
-          onClose={() => setShowRepoDropdown(false)}
-        />
-      )}
     </>
   );
 }
+
+export { RepoDropdown };
 
 import {
   Key,
@@ -306,14 +290,16 @@ function ConfirmPanel({ onSave, onSkip, onCancel }) {
 }
 
 // Repo selector dropdown
-function RepoDropdown({ repoList, selectedRepo, setSelectedRepo, onClose }) {
+function RepoDropdown({ repoList, selectedRepo, setSelectedRepo, onClose, anchor }) {
+  const style = anchor
+    ? { position: 'fixed', top: anchor.top + 'px', right: anchor.right + 'px' }
+    : { position: 'fixed', top: '50%', right: '60px', transform: 'translateY(-50%)' };
   return (
     <div style={{
       position: 'fixed', inset: 0, zIndex: 2000
     }} onClick={onClose}>
       <div style={{
-        position: 'fixed', top: '50%', right: '60px',
-        transform: 'translateY(-50%)',
+        ...style,
         background: '#fff', borderRadius: '12px', padding: '8px',
         boxShadow: '0 8px 25px rgba(0,0,0,0.15)',
         minWidth: '200px', maxHeight: '300px', overflowY: 'auto',
